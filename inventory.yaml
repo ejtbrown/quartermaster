@@ -8,7 +8,7 @@ review_scope:
     - production
   evidence:
     - 'Initial inspection on 2026-09-07 found design artifacts only; the subsequent authorized build added local application, SQL, Terraform, and CI foundations.'
-    - 'The repository has no commits and its current branch is main.'
+    - 'Initial inspection found an unborn main branch. The reviewed foundation/delivery implementation was subsequently published as 173e88c on main and dev; current working branch is dev.'
     - 'The user specified AWS, Terraform, GitHub, dev-from-dev, and production-from-main as target constraints.'
     - 'DESIGN.md defines the target architecture; docs/IMPLEMENTATION.md and docs/DEPLOYMENT-2026-09-07.md distinguish the deployed Ohio data/governance subset from remaining application integrations.'
     - 'Erick Brown accepted Q-001 through Q-004 on 2026-09-06; see docs/decisions/0001-pilot-operating-model.md.'

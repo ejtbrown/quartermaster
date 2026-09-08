@@ -20,6 +20,10 @@ The user explicitly authorized GitHub → CodeBuild/CodePipeline infrastructure 
 
 ## Local validation
 
+Initial public source was committed and pushed to `main` and `dev` as `173e88cbe94a52e135fe6c72df5487cead0af500`; GitHub default branch is main. Exact-commit local release packaging succeeded (four checksummed application outputs plus bundled deployment/plan-check helpers). The committed workflow is active. This publication is not a successful remote CI run or application deployment.
+
+All nine Terraform mock-provider tests passed across the four validation targets. A fresh read-only delivery plan confirmed destruction protection blocks automatic replacement of the failed/tainted stack. It also showed a CloudFront origin serialization difference (the API omits the empty S3 origin configuration used with OAC); reconcile that representation before the next reviewed apply. No follow-up plan was applied and no clean delivery drift result is claimed.
+
 The workspace passes formatting/type/build checks, 80 TypeScript/domain/PostgreSQL/policy tests, two Python alert-summary tests, two Chromium desktop/mobile browser tests, Terraform validation/mock tests, and dependency audit with no known vulnerabilities at this check. These tests do not prove that the not-yet-created pipeline can execute or that release rollback works against live AWS. Re-run the implemented `pnpm verify`, `pnpm infra:check`, `pnpm test:e2e`, and audit commands after edits.
 
 Local account/configuration inputs, plans/logs, state, generated binaries/screenshots and `.codex-resume` are ignored; protected deployment inputs/plan files are mode 0600. Public source checks found no actual credential patterns, private account ID, or operator alert email in publishable source. The pattern scan is not a comprehensive external security review.
