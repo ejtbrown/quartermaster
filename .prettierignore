@@ -1,0 +1,13 @@
+.codex-resume
+.local
+.terraform
+node_modules
+dist
+pnpm-lock.yaml
+*.md
+*.tf
+*.hcl
+*.tfvars
+*.sql
+*.tfplan*
+*.tfstate*

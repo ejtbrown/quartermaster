@@ -1,0 +1,42 @@
+{
+  "name": "quartermaster",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @quartermaster/web dev",
+    "lint": "prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "pnpm --filter @quartermaster/web build && node tools/build-api.mjs",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:operations && pnpm build && pnpm repo:check",
+    "test:operations": "python3 -m unittest discover -s services/operations -p 'test_*.py'",
+    "edge:check": "node tools/check-edge-plan.mjs",
+    "repo:check": "node tools/check-repository.mjs",
+    "infra:check": "node tools/check-infra.mjs",
+    "deployment:check": "node tools/verify-deployment.mjs",
+    "db:smoke": "node tools/smoke-database.mjs",
+    "policy:plan": "node --experimental-strip-types infra/policies/check-plan.ts",
+    "db:test": "vitest run db/tests/tenant-isolation.test.ts",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-pricing-plan-manager": "3.1127.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.12.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "esbuild": "0.28.2",
+    "@electric-sql/pglite": "0.5.8",
+    "prettier": "3.9.6",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0",
+    "yaml": "2.9.0"
+  }
+}

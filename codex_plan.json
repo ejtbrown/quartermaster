@@ -1,0 +1,334 @@
+[
+  {
+    "id": "COST-001",
+    "priority": "P0",
+    "title": "Codify accepted operating and deployment constraints",
+    "description": "Apply accepted Q-001 through Q-009 and Q-031/Q-032: Erick operates the one-church SaaS pilot, privacy and human physical-work responsibility remain first-class, Ohio is primary, three US regions are approved, default-profile credentials select development, uptime is 99.5% with a 60-second cold start, recovery prefers at most one day of data loss with seven days tolerated, CI uses CodeBuild and CodePipeline, and the public repo's trusted native builds use mac-dev and linux-dev. Restore service within 24 hours; create a separate production account only after church acceptance while retaining development in the existing account.",
+    "rationale": "The foundational direction is settled. Configuration and implementation gates must enforce it without confusing development credentials with production authorization or data-loss tolerance with recovery time.",
+    "files_to_change": ["DESIGN.md", "docs/decisions/"],
+    "commands_to_run": [
+      "rg '\\| Q-(00[1-9]|03[12]) \\|' DESIGN.md",
+      "rg 'Status: accepted|Decision: accepted' docs/decisions"
+    ],
+    "acceptance_criteria": [
+      "Accepted Q-001 through Q-009 and Q-031/Q-032 records are retained; the decision register contains 11 accepted and 21 remaining questions.",
+      "The AI scope reflects human responsibility for physical work, advisory reminders, optional measurements, immediate skip handling, and church-configured restrictions without platform certification of worker qualifications.",
+      "Configuration defaults to us-east-2, enforces approved processing destinations us-east-2/us-east-1/us-west-2, and records 99.5% uptime, the 60-second cold allowance, accepted 24-hour RTO, preferred 24-hour RPO, and tolerated 168-hour RPO."
+    ],
+    "rollback_notes": "Decision records are append-only; supersede a decision with a new dated record and keep affected features disabled until re-reviewed."
+  },
+  {
+    "id": "COST-002",
+    "priority": "P0",
+    "title": "Scaffold the typed monorepo and validation gates",
+    "description": "Create the pnpm TypeScript workspace, application/service/package directories from DESIGN.md, deterministic lint/type/test/build scripts, lockfiles, secret scanning, dependency scanning, and minimal contributor documentation. First milestone includes tested retention/deletion-metadata policy, synthetic estate UI, health-only Lambda entry point, database isolation schema, and validated development Terraform; application authentication/CRUD and cloud deployment remain separate completion gates.",
+    "rationale": "Shared contracts and repeatable checks prevent divergent mobile/web/API schemas and make all later infrastructure and cost controls enforceable in CI.",
+    "files_to_change": [
+      "package.json",
+      "pnpm-workspace.yaml",
+      "pnpm-lock.yaml",
+      "tsconfig.base.json",
+      "apps/web/",
+      "apps/mobile/",
+      "services/",
+      "packages/",
+      "README.md"
+    ],
+    "commands_to_run": [
+      "corepack pnpm install --frozen-lockfile",
+      "corepack pnpm lint",
+      "corepack pnpm typecheck",
+      "corepack pnpm test",
+      "corepack pnpm build"
+    ],
+    "acceptance_criteria": [
+      "A clean checkout installs reproducibly and all lint, type, unit, and build commands pass.",
+      "Runtime schemas in packages/contracts generate clients without uncommitted output.",
+      "No secret or high-severity dependency finding is present."
+    ],
+    "rollback_notes": "Revert the scaffold commit as one unit before application data or cloud resources depend on its package names."
+  },
+  {
+    "id": "COST-003",
+    "priority": "P0",
+    "title": "Implement account bootstrap and Terraform cost guardrails",
+    "description": "Bootstrap development in the account reached by local profile default in us-east-2. The initial data/governance deployment is authorized; follow the saved-plan gates and current evidence in docs/IMPLEMENTATION.md and RUNBOOK_ROLLOUT.md. Preserve the private operator-supplied alert recipient and resized-photo retention until photo/asset/tenant deletion. Parameterize a distinct future production account and gate its bootstrap on church acceptance, retaining development in the existing account. Create separate environment backends/roles, enforce project tags and account guards, protect state, configure budgets/anomaly alerts, and reject prohibited always-on/public resources or Aurora auto-pause inhibitors. CI/CD roles, anomaly monitoring, and production remain separate work; do not mark the full task complete after the foundation deployment.",
+    "rationale": "This establishes isolation and prevents NAT gateways, load balancers, public databases, OpenSearch, RDS Proxy, logical replication, Global Database, zero-ETL, Babelfish, provisioned AI/compute/Aurora, or any nonzero database minimum from silently raising the cost floor.",
+    "files_to_change": [
+      "infra/bootstrap/",
+      "infra/modules/foundation/",
+      "infra/policies/",
+      "infra/environments/dev/",
+      "infra/environments/prod/",
+      ".github/workflows/verify.yml",
+      "tools/verify-deployment.mjs",
+      "docs/IMPLEMENTATION.md"
+    ],
+    "commands_to_run": [
+      "pnpm infra:check",
+      "terraform -chdir=infra/environments/dev show -json deployment.tfplan | pnpm policy:plan",
+      "pnpm deployment:check"
+    ],
+    "acceptance_criteria": [
+      "Development targets the STS-verified default-profile account in us-east-2. Production account bootstrap is gated on church acceptance, production account guards reject the development account ID, and environments use distinct state, roles, and resources. No production account is needed to validate or deploy development.",
+      "All supported resources carry Application=Quartermaster, Environment, Owner=ErickBrown, CostCenter, DataClass, and ManagedBy=Terraform tags; untaggable resources have an inventory mapping.",
+      "Account IDs, regions, names, role ARNs, DNS, keys, and integration references are parameterized; changing account configuration cannot silently replace or delete the source stack.",
+      "A fixture containing each prohibited resource fails policy tests and the intended target plan passes.",
+      "Both environment plans use CloudFront Free and configure every Aurora instance with minimum 0 ACU and a 300-second auto-pause.",
+      "Read-only account checks prove each selected deployment account is eligible for CloudFront flat-rate plans; an ineligible account requires an explicit pay-as-you-go security/cost design.",
+      "No cloud apply occurs as part of validation. An explicitly authorized deployment applies only the separately reviewed saved plan, verifies live controls and drift, and records the exact deployed subset.",
+      "Resized photos have no age-based expiry; photo, asset, or tenant deletion ends their retention. The 15-day original rule never targets resized/ objects. Backup-purge and version-aware cleanup remain release gates.",
+      "The initial backup role has no general-purpose AWS-managed backup policy, SSM/EC2 permissions, restoration, or cross-region copy permissions. A completed on-demand backup proves the narrowed role can protect the exact development cluster."
+    ],
+    "rollback_notes": "Do not delete state buckets or accounts. Revert IAM/policy changes through a reviewed Terraform plan, preserving state versions and access logs."
+  },
+  {
+    "id": "COST-004",
+    "priority": "P1",
+    "title": "Build private CloudFront and serverless API ingress",
+    "description": "Current authorized development increment implements infra/environments/delivery: private S3 preview hosting, AWS_IAM health-only Lambda URL with OAC, ACM/DNS, WAF rate limit, and a Terraform-managed native CloudFormation FREE subscription. Publish only after the live subscription is ACTIVE and deploy the exact dev commit through CodePipeline. Authenticated core/conversation APIs and production remain later increments; do not mark those complete from a health-only release.",
+    "rationale": "This provides secure ingress without API Gateway, ALB, public origin bypass, VPC compute, or provisioned concurrency while keeping static and API traffic same-origin.",
+    "files_to_change": [
+      "infra/environments/delivery/",
+      "services/edge/",
+      "services/core-api/",
+      "tools/check-edge-plan.mjs",
+      "tests/edge.test.ts"
+    ],
+    "commands_to_run": [
+      "pnpm verify",
+      "pnpm infra:check",
+      "pnpm test:e2e",
+      "pnpm edge:check"
+    ],
+    "acceptance_criteria": [
+      "Direct S3 and Lambda Function URL requests are denied while equivalent CloudFront requests succeed.",
+      "Viewer auth headers, request bodies, query strings, and correlation IDs reach the intended API without being cached.",
+      "No NAT gateway, load balancer, public IPv4 address, or provisioned Lambda concurrency appears in the plan.",
+      "AI throttling cannot exhaust the core API reserved concurrency allocation."
+    ],
+    "rollback_notes": "Roll CloudFront behavior/origin changes back to the previous version. Never make a Lambda Function URL public as a rollback; use a reviewed HTTP API fallback if OAC fails."
+  },
+  {
+    "id": "COST-005",
+    "priority": "P1",
+    "title": "Implement Aurora Data API and tenant-safe domain core",
+    "description": "Provision supported Aurora PostgreSQL Serverless v2 clusters with minimum 0 ACU and five-minute auto-pause, Data API and one secret per environment; implement migrations, forced RLS, capability checks, assets/locations/media metadata/audit/outbox, pre-commit delayed SQS outbox triggers, idempotency, optimistic concurrency, bounded query adapters, and the cold-activation contract.",
+    "rationale": "This supplies the relational estate and transaction guarantees while avoiding VPC Lambda networking, NAT, RDS Proxy, and unbounded connection fanout.",
+    "files_to_change": [
+      "infra/modules/database/",
+      "db/migrations/",
+      "db/tests/",
+      "packages/domain/",
+      "packages/auth/",
+      "services/core-api/"
+    ],
+    "commands_to_run": [
+      "terraform -chdir=infra/environments/dev validate",
+      "corepack pnpm db:migrate:test",
+      "corepack pnpm db:test:rls",
+      "corepack pnpm --filter core-api test",
+      "corepack pnpm test:integration:data-api"
+    ],
+    "acceptance_criteria": [
+      "Dev and production Aurora are configured with minimum 0 ACU and each reaches zero after five idle minutes in a deployed integration test.",
+      "The pinned Aurora PostgreSQL version is offered in the selected region and explicitly supports Serverless v2 auto-pause to 0 ACUs; no provider default can select a different version.",
+      "Ordinary and 24-hour-deep-sleep activation tests show visible progress, finish within the approved 60-second envelope, make at most three attempts, and cannot duplicate a retried mutation.",
+      "No RDS Proxy, provisioned instance, logical replication, Global Database, zero-ETL integration, Babelfish, synthetic keepalive, or required pg_cron job is present.",
+      "A non-owner application database role cannot read or mutate another tenant even when repository predicates are intentionally omitted.",
+      "At least two synthetic tenants exercise isolation during the one-church pilot, and adding a real church requires no deployment, hard-coded tenant ID, or per-tenant database.",
+      "Air conditioners and appliances use versioned class schemas/templates; a new class that uses existing field and capture capabilities can be added without changing the core asset table or rewriting existing records.",
+      "Every create/final commit is idempotent and every update rejects a stale record version.",
+      "API/query pagination stays within Data API row/result limits and no Lambda is VPC-attached.",
+      "A successful domain transaction and its outbox event commit atomically, every committed outbox batch has a previously accepted durable delayed trigger, and no outbox worker polls an idle database."
+    ],
+    "rollback_notes": "Use expand/contract migrations. Roll application code back only while the previous schema remains compatible; never destroy a cluster or state. Restore data only through the tested recovery procedure."
+  },
+  {
+    "id": "COST-006",
+    "priority": "P1",
+    "title": "Deliver web register and offline mobile capture",
+    "description": "Implement Cognito PKCE sessions, role-aware web estate/register/detail views, church data-administration controls, scoped temporary support access, configurable service/privacy/support identity initially naming Erick Brown, mobile structured capture, local durable operation/media queue, resumable synchronization, manual conflict resolution, and touch/keyboard accessibility fallbacks.",
+    "rationale": "A trustworthy non-AI product validates the domain and offline model before generative automation is allowed to create records.",
+    "files_to_change": [
+      "apps/web/",
+      "apps/mobile/",
+      "packages/contracts/",
+      "packages/auth/",
+      "services/core-api/"
+    ],
+    "commands_to_run": [
+      "corepack pnpm --filter web test",
+      "corepack pnpm --filter web test:e2e",
+      "corepack pnpm --filter mobile test",
+      "corepack pnpm test:contracts",
+      "corepack pnpm test:integration:sync"
+    ],
+    "acceptance_criteria": [
+      "A field draft with media survives process death and a simulated multi-day outage, then synchronizes once without duplicates.",
+      "Overlapping edits require human conflict resolution and non-overlapping edits merge according to the documented policy.",
+      "All primary capture actions work without speech or AI and pass accessibility checks.",
+      "Church administrators can manage memberships, permissions, records, exports, lifecycle requests, and scoped support grants; Erick's support sessions are expiring and audited.",
+      "Privacy acceptance covers purpose, recipients, access, and retention/deletion for enabled features; operator identity can later change without rewriting tenant IDs or prior audit actors.",
+      "Web tokens are not stored in localStorage and mobile tokens use OS-protected storage."
+    ],
+    "rollback_notes": "Keep API contracts backward compatible with the last released mobile version. Disable new UI features by server capability flags without invalidating local drafts."
+  },
+  {
+    "id": "COST-007",
+    "priority": "P1",
+    "title": "Implement the bounded media inference pipeline",
+    "description": "Create private S3 media storage, constrained pre-signed uploads, quarantine validation, deterministic image variants, SQS/DLQ processing, multimodal observations with provenance/confidence, bounded concurrency/retries, and user confirmation promotion.",
+    "rationale": "Queued idempotent processing isolates expensive/untrusted media and makes image inference optional without blocking core asset capture.",
+    "files_to_change": [
+      "infra/modules/media/",
+      "infra/modules/workers/",
+      "services/media-worker/",
+      "services/core-api/",
+      "packages/contracts/",
+      "packages/domain/"
+    ],
+    "commands_to_run": [
+      "corepack pnpm --filter media-worker test",
+      "corepack pnpm test:integration:media",
+      "corepack pnpm test:security:uploads",
+      "corepack pnpm test:ai-eval:image"
+    ],
+    "acceptance_criteria": [
+      "Unexpected/active/oversized/decompression-bomb inputs are rejected without model invocation.",
+      "Duplicate S3/queue delivery produces one observation/variant set and no duplicate billable retry after success.",
+      "Serial, model, and other critical image values remain proposals until confirmed.",
+      "Poison messages reach the DLQ after the bounded attempt count and alarm without blocking other tenants.",
+      "The evaluation set meets approved per-field/capture-kind thresholds and records cost/latency."
+    ],
+    "rollback_notes": "Disable the model/worker event mapping and retain originals/drafts. Revert to manual classification; never delete evidence or confirmed values during rollback."
+  },
+  {
+    "id": "COST-008",
+    "priority": "P1",
+    "title": "Implement the safe voice conversation controller",
+    "description": "Add short-lived Transcribe stream grants, DynamoDB TTL session state, versioned deterministic workflows, typed AI tools, schema and policy validation, platform-native TTS text responses, final review/transactional commit, and AI usage/circuit-breaker controls.",
+    "rationale": "This supplies the core voice-first UX while preventing autonomous mutation, unsafe prompts, quadratic context, and unbounded speech/model spend.",
+    "files_to_change": [
+      "infra/modules/ai/",
+      "services/conversation-api/",
+      "packages/domain/",
+      "packages/contracts/",
+      "apps/mobile/",
+      "db/migrations/",
+      "docs/ai/"
+    ],
+    "commands_to_run": [
+      "corepack pnpm --filter conversation-api test",
+      "corepack pnpm test:ai-eval:conversation",
+      "corepack pnpm test:ai-eval:safety",
+      "corepack pnpm test:security:prompt-injection",
+      "corepack pnpm test:integration:conversation"
+    ],
+    "acceptance_criteria": [
+      "Only allowlisted, schema-valid tools can change a draft and all consequential fields/actions follow confirmation policy.",
+      "Humans decide whether and how to perform physical work; AI offers optional capture prompts and advisory reminders, never certifies a person or site as safe, and accepts refusal/inaccessibility without repeated pressure.",
+      "Human-provided readings can be recorded without platform verification of trade qualifications; church-configured restrictions are enforced and generated instructions for hazardous physical work remain outside scope.",
+      "Each admitted stream/turn/session has a tested maximum duration/token/image/attempt cost and tenant/global circuit breaker.",
+      "The air-conditioner workflow creates the expected asset, two media links, reading, maintenance item, and access constraint exactly once.",
+      "AI outage falls back to manual capture without loss of draft/media."
+    ],
+    "rollback_notes": "Version and retain workflows/prompts. Disable AI admission and route sessions to manual controls; do not reinterpret or delete prior observations."
+  },
+  {
+    "id": "COST-009",
+    "priority": "P1",
+    "title": "Implement bounded search reporting and rules",
+    "description": "Add tenant-first PostgreSQL full-text/trigram/facet indexes, allowlisted query AST/compiler, async report/export jobs, declarative rule dry-run/execution, mutation caps, one-time schedules for actual future work, and non-polling outbox consumers.",
+    "rationale": "The web comprehension workload can launch without an always-on search cluster or warehouse while retaining safe natural-language query translation.",
+    "files_to_change": [
+      "db/migrations/",
+      "db/tests/",
+      "services/core-api/",
+      "services/rule-worker/",
+      "services/export-worker/",
+      "apps/web/",
+      "packages/contracts/"
+    ],
+    "commands_to_run": [
+      "corepack pnpm db:test:plans",
+      "corepack pnpm --filter core-api test:search",
+      "corepack pnpm --filter rule-worker test",
+      "corepack pnpm --filter export-worker test",
+      "corepack pnpm test:integration:reports"
+    ],
+    "acceptance_criteria": [
+      "No user or model can submit raw SQL and every query is tenant/capability scoped, parameterized, row/time limited, and explain-plan tested.",
+      "Large reports become snapshot jobs and cannot monopolize interactive concurrency.",
+      "Rules show an affected-count/sample dry-run, are idempotent, and stop at the configured mutation cap.",
+      "No periodic empty database scan or outbox poll prevents Aurora from auto-pausing; scheduled invocations correspond to actual due or explicitly enabled periodic work.",
+      "Representative launch-scale searches/reports meet the approved warm latency objective without OpenSearch."
+    ],
+    "rollback_notes": "Disable the affected rule/query feature and retain prior index/schema compatibility. Do not drop indexes or rule-run history until the previous version is stable."
+  },
+  {
+    "id": "COST-010",
+    "priority": "P1",
+    "title": "Create supported CI CD and recovery operations",
+    "description": "Current authorized increment implements disposable CodeBuild GitHub Actions checks, separate verify/build/deploy IAM roles, and a dev-only CodePipeline V2 release from the public repository. Packages checksummed build outputs, tests a published Lambda version before alias promotion, and preserves previous website versions for rollback. Owner must complete the CodeConnections handshake; never upload a personal GitHub token. Cloud configuration remains reviewed saved-plan Terraform, separate from automatic least-privilege application releases. Production/main deployment, native SSH coordinator, expand-contract schema deployment, regional recovery and timed restore drills remain separate unfinished increments.",
+    "rationale": "Supported service roles, immutable promotion, and tested rollback/recovery are required to deploy the cost-optimized architecture safely.",
+    "files_to_change": [
+      ".github/workflows/",
+      "buildspec.yml",
+      "infra/bootstrap/github.tf",
+      "infra/environments/delivery/",
+      "tools/ci-install.sh",
+      "tools/package-release.mjs",
+      "tools/deploy-release.mjs",
+      "services/operations/",
+      "RUNBOOK_ROLLOUT.md"
+    ],
+    "commands_to_run": [
+      "pnpm verify",
+      "pnpm infra:check",
+      "pnpm test:e2e",
+      "pnpm audit --audit-level high",
+      "terraform -chdir=infra/environments/delivery plan -input=false -var-file=deployment.local.tfvars -out=hosting.tfplan",
+      "terraform -chdir=infra/environments/delivery show -json hosting.tfplan | pnpm policy:plan"
+    ],
+    "acceptance_criteria": [
+      "Public pull-request jobs run on disposable CodeBuild Linux runners with restricted IAM, no deployment/signing secrets, and no path to the LAN; untrusted workflows cannot dispatch mobile jobs.",
+      "The dev branch deploys only dev in the existing account and main only production in the separate production account through distinct roles/state/resources. Production deployment remains disabled until church acceptance and production bootstrap are complete.",
+      "The local coordinator polls only its CodePipeline custom-action jobs, dispatches exact reviewed commit IDs over SSH to mac-dev/linux-dev, verifies toolchains and artifact provenance, and reports completion without public SSH or an always-on cloud bridge.",
+      "Production apply consumes the reviewed saved plan and cannot silently re-plan.",
+      "A restore drill validates row counts, tenant isolation, referenced original media versions/checksums, idempotent recovery, and sign-in against the preferred 24-hour RPO; backup age beyond 24 hours alerts and the seven-day tolerated ceiling is never mistaken for normal cadence.",
+      "The measured backup/copy/restore cost is recorded; a timed restore drill demonstrates the accepted 24-hour RTO including detection/operator response and core-service validation. Production bootstrap evidence records church acceptance and a production account ID distinct from development.",
+      "Account migration is documented and tested as target provisioning, data/identity/artifact migration, validation, and cutover with source preservation; no state rewrite is treated as a resource transfer.",
+      "No deployment is claimed until post-deploy smoke, metrics, and cost-dimension checks pass."
+    ],
+    "rollback_notes": "Roll back immutable application artifacts and compatible configuration; roll database schema forward with a corrective migration. Preserve failed plans/logs and follow RUNBOOK_ROLLOUT.md rather than destroying state."
+  },
+  {
+    "id": "COST-011",
+    "priority": "P2",
+    "title": "Tune active capacity edge plan and data tiers from evidence",
+    "description": "After pilot telemetry, keep Aurora minimum capacity at zero while tuning maximum capacity and the auto-pause timeout, evaluate an optional co-pausing reader, define CloudFront paid-plan thresholds, tune media lifecycle and Aurora storage mode, and decide whether PostgreSQL search/reporting needs a projection service.",
+    "rationale": "These are material active-cost/SLO migrations whose economics cannot be resolved from a greenfield estimate; none should silently reintroduce an idle compute floor.",
+    "files_to_change": [
+      "cost_model.md",
+      "DESIGN_REVIEW_COST_SCALABILITY.md",
+      "docs/decisions/",
+      "infra/environments/prod/"
+    ],
+    "commands_to_run": [
+      "corepack pnpm report:cost-units --environment prod --days 90",
+      "corepack pnpm test:load:prodlike",
+      "corepack pnpm test:db:resume",
+      "corepack pnpm test:db:failover",
+      "terraform -chdir=infra/environments/prod plan -out=prod-tuning.tfplan"
+    ],
+    "acceptance_criteria": [
+      "At least 90 days of cost, access, query, resume, and failure telemetry supports each selected change.",
+      "Updated formulas identify fixed/marginal delta and break-even for every option.",
+      "The approved plan meets SLO, RPO/RTO, security, and retention requirements without unexpected replacement/deletion.",
+      "Every selected database topology still reaches 0 ACU when idle unless an explicit product architecture decision supersedes the scale-to-zero requirement.",
+      "A rollback or restore procedure is tested before production apply."
+    ],
+    "rollback_notes": "Apply one tuning change at a time. Return to the prior Terraform setting/storage class only after verifying minimum-duration/retrieval constraints and data availability."
+  }
+]

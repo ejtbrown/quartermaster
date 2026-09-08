@@ -1,0 +1,23 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - bash tools/ci-install.sh
+  build:
+    commands:
+      - export PATH="$CODEBUILD_SRC_DIR/.local/bin:/usr/local/bin:$PATH"
+      - git init --initial-branch=dev
+      - pnpm install --frozen-lockfile
+      - pnpm verify
+      - pnpm infra:check
+      - pnpm audit --audit-level high
+      - pnpm exec playwright install --with-deps chromium
+      - pnpm test:e2e
+      - node tools/package-release.mjs
+
+artifacts:
+  base-directory: release
+  files:
+    - '**/*'
+  discard-paths: no

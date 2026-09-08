@@ -1,0 +1,469 @@
+review_scope:
+  regions:
+    - 'us-east-2 (accepted primary workload region)'
+    - 'us-west-2 (approved alternative; proposed backup destination)'
+    - 'us-east-1 (approved alternative and service-specific control-plane needs)'
+  environments:
+    - dev
+    - production
+  evidence:
+    - 'Initial inspection on 2026-09-07 found design artifacts only; the subsequent authorized build added local application, SQL, Terraform, and CI foundations.'
+    - 'The repository has no commits and its current branch is main.'
+    - 'The user specified AWS, Terraform, GitHub, dev-from-dev, and production-from-main as target constraints.'
+    - 'DESIGN.md defines the target architecture; docs/IMPLEMENTATION.md and docs/DEPLOYMENT-2026-09-07.md distinguish the deployed Ohio data/governance subset from remaining application integrations.'
+    - 'Erick Brown accepted Q-001 through Q-004 on 2026-09-06; see docs/decisions/0001-pilot-operating-model.md.'
+    - 'Erick Brown accepted Q-005 through Q-009 on 2026-09-07; see docs/decisions/0002-regions-recovery-and-build-hosts.md.'
+    - 'Erick Brown accepted Q-031/Q-032 on 2026-09-07: 24-hour recovery time and a separate production account after church acceptance; see docs/decisions/0003-recovery-time-and-production-account.md.'
+    - 'Read-only default-profile STS authentication succeeded with configured region us-east-2; GitHub repository is PUBLIC.'
+    - 'Read-only SSH checks succeeded for mac-dev (Xcode present) and linux-dev (Java/Node present); full mobile toolchain/signing readiness is not yet established.'
+    - 'Ohio Nova 2 Lite US profile is ACTIVE and lists only us-east-2, us-east-1, and us-west-2 destinations.'
+  assumptions:
+    - 'Resource entries below describe the complete target; implementation_evidence identifies which subset is actually deployed. Proposed resources must not be treated as live inventory.'
+    - "Production domain remains undecided; development/testing uses the default profile's account, with a separate production account created only after church acceptance."
+implementation_evidence:
+  active_milestone: 'GitHub/CodeBuild/CodePipeline implementation prepared; hosting partially provisioned, release blocked by connection authorization and rejected FREE subscription.'
+  status: 'data/governance deployed; private health Lambda and disabled hosting provisioned; public application not deployed'
+  source: 'docs/IMPLEMENTATION.md'
+  web: 'apps/web: synthetic estate preview, no authentication or persistence'
+  core_api: 'services/core-api: built health-only handler, no database calls'
+  contracts_and_policy: ['packages/contracts', 'packages/domain']
+  schema: 'db/migrations/0001_asset_foundation.sql; PostgreSQL RLS tests in PGlite'
+  terraform:
+    [
+      'infra/bootstrap',
+      'infra/modules/foundation',
+      'infra/environments/dev',
+      'infra/environments/delivery',
+    ]
+  delivery_state: 'Separate protected dev/delivery.tfstate; application release roles cannot access this or database state.'
+  delivery_plan: '44 create-only plan applied partially: 42 successful creates, one retained CREATE_FAILED subscription stack, final deploy policy not reached. No deletes or replacements.'
+  delivery_blockers:
+    [
+      'CodeConnections PENDING owner authorization',
+      'AWS rejected FREE eligibility for the new distribution; cause unresolved; no paid substitution',
+    ]
+  deployed_foundation_resources:
+    [
+      'database_vpc',
+      'relational_database',
+      'media',
+      'conversation_sessions',
+      'backup_recovery_points',
+      'terraform_state',
+      'budget',
+      'operations_topic',
+    ]
+  ci: 'Workflow/buildspec/immutable release and rollback scripts plus Terraform projects/pipeline implemented; runner/webhook/pipeline not yet provisioned; all external PR contributors now require approval'
+  bootstrap_plan: 'Original five resources plus one GitHub connection applied; protected local bootstrap state, no migration'
+  foundation_plan: '23 additions applied; one parameter-only reconciliation update; no destruction; final development plan has no changes'
+  live_checks: '32 control-plane checks pass; read-only Data API query succeeds; first encrypted 90-day backup completed; details in docs/DEPLOYMENT-2026-09-07.md'
+  idle_observation: 'CloudWatch ServerlessDatabaseCapacity minimum and maximum 0.0 ACU at 2026-09-07 17:22/17:23/17:24 UTC; writer left idle'
+  alert_status: 'configured operator email confirmed; operations publishers/alarms not implemented'
+  cost_allocation_status: 'CostScope not yet exposed by AWS for activation; tag-filtered budget attribution pending'
+  destructive_content_cleanup: 'disabled pending backup-purge semantics and version-aware purge implementation'
+accepted_product_decisions:
+  decision_date: '2026-09-06'
+  owner: 'Erick Brown'
+  source: 'docs/decisions/0001-pilot-operating-model.md'
+  service_operator: 'Erick Brown'
+  designated_data_controller: 'Erick Brown'
+  support_operator: 'Erick Brown'
+  possible_successor: 'LLC to be formed if the venture proves viable; transfer is conditional'
+  tenancy: 'multi-tenant SaaS'
+  initial_real_tenant_count: 1
+  isolation_test_tenant_count_minimum: 2
+  initial_asset_classes:
+    - 'air conditioners'
+    - 'appliances'
+  asset_class_expansion: 'incremental versioned schemas and capture templates'
+  church_data_controls: 'memberships, permissions, records, exports, lifecycle requests, and scoped support access'
+  privacy_and_compliance: 'first-class requirements from the pilot onward'
+  physical_work_safety: 'human responsibility; advisory AI reminders; no platform certification of workers or physical procedures'
+accepted_infrastructure_decisions:
+  decision_date: '2026-09-07'
+  source: 'docs/decisions/0002-regions-recovery-and-build-hosts.md'
+  supplemental_source: 'docs/decisions/0003-recovery-time-and-production-account.md'
+  primary_region: 'us-east-2'
+  approved_regions: ['us-east-2', 'us-east-1', 'us-west-2']
+  local_development_profile: 'default'
+  production_account: 'separate account to be created after church acceptance; accepted Q-032'
+  production_bootstrap_gate: 'church accepts the product; actual account ID/roles recorded during later bootstrap'
+  development_account_retained: true
+  development_monthly_budget_usd: 100
+  development_domain: 'qm.ejtbrown.com'
+  development_email_domain: 'qm.ejtbrown.com'
+  alert_email: 'operator-supplied address in protected environment configuration'
+  originals_retention_days: 15
+  resized_photo_retention: 'until explicit photo deletion or asset/tenant purge; no age-based expiry'
+  transcripts_retention_days: 15
+  audit_retention_years: 1
+  backup_retention_months: 3
+  initial_backup_retention_days: 90
+  destructive_cleanup_enabled: false
+  deletion_policy: 'purge content including resized photos; retain minimal metadata and deletion timestamp; backup-purge semantics pending'
+  availability_percent: 99.5
+  cold_start_seconds: 60
+  preferred_rpo_hours: 24
+  tolerated_rpo_hours: 168
+  rto_hours: 24
+  rto_status: 'accepted Q-031; restore drill not yet implemented'
+  repository_visibility: 'public (verified)'
+  ci: 'GitHub Actions checks on CodeBuild; CodePipeline deployments'
+  account_migration: 'parameterized Terraform, tagged resources, explicit data/identity migration and cutover'
+local_build_hosts:
+  - alias: 'mac-dev'
+    lifecycle: existing
+    role: 'iOS build and signing'
+    evidence: 'SSH reached Darwin; Xcode 26.1.1; Node not on noninteractive SSH command path'
+  - alias: 'linux-dev'
+    lifecycle: existing
+    role: 'Android build and testing'
+    evidence: 'SSH reached Linux; Java 17 and Node; Android SDK tools not on command path'
+  - alias: 'current development host'
+    lifecycle: proposed
+    role: 'on-demand mobile release coordinator; outbound CodePipeline worker and local SSH dispatch'
+    evidence: 'DESIGN.md section 15.3; no coordinator implemented'
+components:
+  - name: 'web'
+    type: frontend
+    lifecycle: local_preview
+    source_paths:
+      - 'apps/web'
+    deployment_paths:
+      - 'infra/modules/edge'
+  - name: 'mobile'
+    type: frontend
+    lifecycle: proposed
+    source_paths:
+      - 'apps/mobile'
+    deployment_paths: []
+  - name: 'core-api'
+    type: api
+    lifecycle: local_health_only
+    source_paths:
+      - 'services/core-api'
+    deployment_paths:
+      - 'infra/modules/api'
+  - name: 'conversation-api'
+    type: api
+    lifecycle: proposed
+    source_paths:
+      - 'services/conversation-api'
+    deployment_paths:
+      - 'infra/modules/api'
+  - name: 'media-worker'
+    type: worker
+    lifecycle: proposed
+    source_paths:
+      - 'services/media-worker'
+    deployment_paths:
+      - 'infra/modules/workers'
+  - name: 'rule-worker'
+    type: worker
+    lifecycle: proposed
+    source_paths:
+      - 'services/rule-worker'
+    deployment_paths:
+      - 'infra/modules/workers'
+  - name: 'export-worker'
+    type: worker
+    lifecycle: proposed
+    source_paths:
+      - 'services/export-worker'
+    deployment_paths:
+      - 'infra/modules/workers'
+  - name: 'infrastructure'
+    type: infra
+    lifecycle: foundation_deployed_dev_only
+    source_paths:
+      - 'infra'
+    deployment_paths:
+      - 'infra/environments/dev'
+      - 'infra/environments/prod'
+aws_resources:
+  - logical_name: 'edge_distribution'
+    service: 'Amazon CloudFront'
+    resource_type: 'distribution with Free flat-rate plan'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'edge_security'
+    service: 'AWS WAF and AWS Shield'
+    resource_type: 'CloudFront-associated web ACL, managed/custom rules, and standard DDoS protection'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'dns_and_certificates'
+    service: 'Amazon Route 53 and AWS Certificate Manager'
+    resource_type: 'hosted-zone records and public TLS certificates'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: true
+  - logical_name: 'web_assets'
+    service: 'Amazon S3'
+    resource_type: 'bucket'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'media'
+    service: 'Amazon S3'
+    resource_type: 'bucket'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'api_functions'
+    service: 'AWS Lambda'
+    resource_type: 'functions and function URLs'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'worker_functions'
+    service: 'AWS Lambda'
+    resource_type: 'functions'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'relational_database'
+    service: 'Amazon Aurora'
+    resource_type: 'PostgreSQL Serverless v2 cluster'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+      - 'cost_model.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+    idle_configuration:
+      minimum_acu: 0
+      auto_pause_seconds: 300
+      readers_at_launch: 0
+      production_maximum_acu: 8
+      development_maximum_acu: 4
+  - logical_name: 'session_state'
+    service: 'Amazon DynamoDB'
+    resource_type: 'on-demand table with TTL and PITR'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'media_queue'
+    service: 'Amazon SQS'
+    resource_type: 'standard queue and dead-letter queue'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'outbox_trigger_queue'
+    service: 'Amazon SQS'
+    resource_type: 'standard delayed trigger queue and dead-letter queue'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'rule_schedule_and_events'
+    service: 'Amazon EventBridge'
+    resource_type: 'one-time due-work Scheduler entries and default-bus delivery rules where required'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'identity'
+    service: 'Amazon Cognito'
+    resource_type: 'user pool and application clients'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'multimodal_inference'
+    service: 'Amazon Bedrock'
+    resource_type: 'on-demand cross-region inference profile'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+      - 'cost_model.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'speech_to_text'
+    service: 'Amazon Transcribe'
+    resource_type: 'streaming transcription'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+      - 'cost_model.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'delivery_pipelines'
+    service: 'AWS CodePipeline and AWS CodeBuild'
+    resource_type: 'V2 pipelines, build projects, and GitHub Actions runner project'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'source_connection'
+    service: 'AWS CodeConnections'
+    resource_type: 'GitHub repository connection'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'database_credentials'
+    service: 'AWS Secrets Manager'
+    resource_type: 'one Aurora Data API secret per environment'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+      - 'cost_model.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: true
+  - logical_name: 'backup_recovery_points'
+    service: 'AWS Backup and Amazon RDS'
+    resource_type: 'declared: native seven-day PITR plus AWS Backup 90-day same-region snapshots; proposed: cross-region copies and media recovery'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+      - 'RUNBOOK_ROLLOUT.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'terraform_state_and_artifacts'
+    service: 'Amazon S3'
+    resource_type: 'versioned state and pipeline artifact buckets'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+      - 'RUNBOOK_ROLLOUT.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: false
+  - logical_name: 'monitoring_and_audit'
+    service: 'Amazon CloudWatch and AWS CloudTrail'
+    resource_type: 'log groups, metrics, alarms, dashboards, and control-plane trail'
+    lifecycle: proposed
+    source_paths:
+      - 'DESIGN.md'
+      - 'RUNBOOK_ROLLOUT.md'
+    environments:
+      - dev
+      - production
+    always_on_candidate: true
+networking:
+  - name: 'database_vpc'
+    lifecycle: proposed
+    resources:
+      - 'VPC'
+      - 'isolated subnets in at least two Availability Zones'
+      - 'route tables'
+      - 'database security group'
+    hourly_charged_resources: []
+    excluded_resources:
+      - 'NAT gateway'
+      - 'load balancer'
+      - 'interface VPC endpoint'
+      - 'public IPv4 address'
+data_stores:
+  - name: 'Aurora PostgreSQL'
+    lifecycle: proposed
+    role: 'relational system of record, full-text search, and reporting'
+    scale_to_zero: 'yes in both environments; every instance has minimum 0 ACU and pauses after five idle minutes; retained bytes and secrets remain billable'
+  - name: 'DynamoDB'
+    lifecycle: proposed
+    role: 'ephemeral conversation/web-session, idempotency, and synchronization state'
+    scale_to_zero: 'request throughput yes; retained bytes remain billable subject to allowances'
+  - name: 'S3'
+    lifecycle: proposed
+    role: 'media originals/variants, exports, artifacts, and Terraform state'
+    scale_to_zero: 'request throughput yes; retained bytes remain billable subject to plan credits'
+observability:
+  - name: 'CloudWatch'
+    lifecycle: proposed
+    resources:
+      - 'structured log groups'
+      - 'service metrics'
+      - 'standard alarms'
+      - 'dashboards'
+  - name: 'CloudTrail'
+    lifecycle: proposed
+    resources:
+      - 'control-plane audit trail'
+always_on_candidates:
+  - logical_name: 'Aurora retained storage and Secrets Manager credentials'
+    estimated_monthly_usd: 2.80
+    evidence: 'cost_model.md'
+    note: 'durable data/credentials, not continuously running compute'
+scale_to_zero_regressions_rejected:
+  - 'nonzero Aurora minimum capacity'
+  - 'provisioned Aurora instance'
+  - 'RDS Proxy'
+  - 'logical replication'
+  - 'Aurora Global Database'
+  - 'Aurora zero-ETL integration'
+  - 'Babelfish'
+  - 'synthetic database keepalive'
+  - 'pg_cron or another in-database dependency for required scheduled work'
+missing_context:
+  - 'Church acceptance before production bootstrap; future production account ID, roles, and bootstrap resources (separate-account topology is accepted Q-032)'
+  - 'CloudFront flat-rate-plan eligibility for each selected account (accounts using AWS Free Tier are ineligible)'
+  - 'User, asset, image, request, and AI-session volumes for the confirmed one-church pilot; future tenant growth'
+  - 'Measured restore performance against accepted 24-hour RTO; backup economics and completion age for preferred 24-hour RPO'
+  - 'Data-retention, residency, insurance, accounting, and privacy requirements'
+  - 'Final production domain'
+  - 'Existing GitHub organization controls and AWS account bootstrap resources'
+  - 'Signing identities, Apple/Google credentials, and pinned toolchain readiness on mac-dev and linux-dev'
