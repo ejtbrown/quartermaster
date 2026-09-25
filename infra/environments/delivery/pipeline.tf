@@ -152,8 +152,11 @@ resource "aws_codebuild_project" "release" {
     buildspec = each.key == "build" ? "buildspec.yml" : yamlencode({
       version = "0.2"
       phases = {
-        install = { commands = ["npm install --global node@24.20.0"] }
-        build   = { commands = ["node deploy.mjs"] }
+        install = { commands = ["npm install --prefix .local/toolchain --no-save --package-lock=false node@24.20.0"] }
+        build = { commands = [
+          "export PATH=\"$CODEBUILD_SRC_DIR/.local/toolchain/node_modules/.bin:$PATH\"",
+          "node deploy.mjs"
+        ] }
       }
     })
   }

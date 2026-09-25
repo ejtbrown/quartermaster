@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # Installs only into the disposable CodeBuild container, never a signing host.
-npm install --global node@24.20.0 pnpm@10.34.5
+: "${CODEBUILD_SRC_DIR:?Run this installer only in a disposable CodeBuild job}"
+npm install --prefix "$CODEBUILD_SRC_DIR/.local/toolchain" --no-save --package-lock=false node@24.20.0 pnpm@10.34.5
+export PATH="$CODEBUILD_SRC_DIR/.local/toolchain/node_modules/.bin:$PATH"
 mkdir -p .local/bin
 curl --fail --silent --show-error --location \
   https://releases.hashicorp.com/terraform/1.14.3/terraform_1.14.3_linux_amd64.zip \

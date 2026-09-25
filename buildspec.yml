@@ -6,7 +6,7 @@ phases:
       - bash tools/ci-install.sh
   build:
     commands:
-      - export PATH="$CODEBUILD_SRC_DIR/.local/bin:/usr/local/bin:$PATH"
+      - export PATH="$CODEBUILD_SRC_DIR/.local/toolchain/node_modules/.bin:$CODEBUILD_SRC_DIR/.local/bin:$PATH"
       - git init --initial-branch=dev
       - pnpm install --frozen-lockfile
       - pnpm verify
