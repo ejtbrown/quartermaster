@@ -6,7 +6,7 @@ type Change = {
   address: string;
   type: string;
   mode?: string;
-  change: { actions: string[]; after?: Values | null };
+  change: { actions: string[]; before?: Values | null; after?: Values | null };
 };
 type Plan = {
   resource_changes?: Change[];
@@ -49,7 +49,6 @@ const allowedTypes = new Set([
   'aws_cloudfront_origin_access_control',
   'aws_cloudfront_function',
   'aws_cloudfront_distribution',
-  'aws_cloudformation_stack',
   'aws_codebuild_project',
   'aws_codebuild_webhook',
   'aws_codepipeline',
@@ -75,7 +74,6 @@ const taggable = new Set([
   'aws_acm_certificate',
   'aws_wafv2_web_acl',
   'aws_cloudfront_distribution',
-  'aws_cloudformation_stack',
   'aws_codebuild_project',
   'aws_codepipeline',
 ]);
@@ -119,6 +117,10 @@ export function inspectPlan(input: unknown): string[] {
       errors.push(`${resource.address}: ${message}`);
     if (resource.change.actions.includes('delete'))
       fail('Deletion or replacement requires a separately reviewed operation');
+    if (resource.change.actions.includes('forget')) {
+      fail('Forgetting state requires a separately reviewed operation');
+      continue;
+    }
     if (!allowedTypes.has(resource.type)) {
       fail(
         'Resource type is not approved for this foundation (warm capacity or scope expansion)',
@@ -255,33 +257,13 @@ export function inspectPlan(input: unknown): string[] {
           fail('Origins must always use SigV4');
         break;
       case 'aws_cloudfront_distribution':
-        if (
-          blocks(value.ordered_cache_behavior).length > 4 ||
-          blocks(value.logging_config).length
-        )
-          fail('Preserve FREE-plan behavior and logging limits');
+        if (!value.web_acl_id) fail('Preserve the development WAF association');
         if (
           blocks(value.viewer_certificate)[0]?.minimum_protocol_version !==
           'TLSv1.2_2021'
         )
           fail('Modern viewer TLS is required');
         break;
-      case 'aws_cloudformation_stack': {
-        try {
-          const template = JSON.parse(String(value.template_body));
-          const resources = Object.values(template.Resources) as Values[];
-          if (
-            resources.length !== 1 ||
-            resources[0]?.Type !== 'AWS::PricingPlanManager::Subscription' ||
-            (resources[0]?.Properties as Values)?.PlanTier !== 'FREE' ||
-            resources[0]?.DeletionPolicy !== 'Retain'
-          )
-            fail('Only the retained FREE edge subscription bridge is approved');
-        } catch {
-          fail('CloudFormation template must be known and reviewable');
-        }
-        break;
-      }
       case 'aws_cloudwatch_log_group':
         if (value.retention_in_days !== 30)
           fail('Delivery system logs require 30-day retention');
@@ -316,14 +298,27 @@ export function inspectPlan(input: unknown): string[] {
         break;
       case 'aws_backup_plan':
         if (
-          !blocks(value.rule).length ||
-          blocks(value.rule).some(
-            (rule) =>
-              blocks(rule.lifecycle)[0]?.delete_after !== 90 ||
-              rule.enable_continuous_backup !== false,
+          blocks(value.rule).length !== 2 ||
+          ![
+            ['database-every-12-hours', 'cron(0 0/12 * * ? *)', 7],
+            ['database-weekly-90-days', 'cron(0 0 ? * SUN *)', 90],
+          ].every(([name, schedule, retention]) =>
+            blocks(value.rule).some(
+              (rule) =>
+                rule.rule_name === name &&
+                rule.schedule === schedule &&
+                rule.schedule_expression_timezone === 'Etc/UTC' &&
+                blocks(rule.lifecycle)[0]?.delete_after === retention &&
+                rule.enable_continuous_backup === false &&
+                rule.target_vault_name === 'quartermaster-dev-database' &&
+                rule.start_window === 60 &&
+                rule.completion_window === 180,
+            ),
           )
         )
-          fail('Use 90-day snapshots, not a 90-day native PITR setting');
+          fail(
+            'Use 12-hour/seven-day and weekly/90-day snapshots in the development vault',
+          );
         break;
       case 'aws_backup_selection':
         if (

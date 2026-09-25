@@ -58,8 +58,17 @@ run "budget_and_retention" {
     error_message = "The development budget and supported notification count must be preserved."
   }
   assert {
-    condition     = one(aws_backup_plan.database.rule).lifecycle[0].delete_after == 90 && aws_rds_cluster.database.backup_retention_period == 7
-    error_message = "Three-month snapshot retention must not be confused with the shorter native PITR window."
+    condition     = length(aws_backup_plan.database.rule) == 2 && aws_rds_cluster.database.backup_retention_period == 7
+    error_message = "Preserve seven-day PITR and both recent and historical snapshot rules."
+  }
+  assert {
+    condition = alltrue([for rule in aws_backup_plan.database.rule :
+      rule.schedule_expression_timezone == "Etc/UTC" && !rule.enable_continuous_backup && rule.start_window == 60 && rule.completion_window == 180 && (
+        (rule.rule_name == "database-every-12-hours" && rule.schedule == "cron(0 0/12 * * ? *)" && rule.lifecycle[0].delete_after == 7) ||
+        (rule.rule_name == "database-weekly-90-days" && rule.schedule == "cron(0 0 ? * SUN *)" && rule.lifecycle[0].delete_after == 90)
+      )
+    ])
+    error_message = "Keep 12-hour snapshots for seven days and weekly snapshots for 90 days from creation."
   }
   assert {
     condition     = one(aws_s3_bucket_lifecycle_configuration.media.rule).status == "Disabled" && one(aws_s3_bucket_lifecycle_configuration.media.rule).expiration[0].days == 15 && one(aws_s3_bucket_lifecycle_configuration.media.rule).filter[0].prefix == "originals/"

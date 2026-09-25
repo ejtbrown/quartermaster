@@ -31,26 +31,8 @@ function aws(args, region = 'us-east-2') {
   );
 }
 assert.equal(aws(['sts', 'get-caller-identity']).Account, account);
-// Subscription outputs can be stale after console changes. Verify live state too.
+// Fail closed if the exact edge resources change billing or lose their WAF.
 execFileSync(process.execPath, ['edge-check.mjs'], { stdio: 'inherit' });
-const stack = aws(
-  [
-    'cloudformation',
-    'describe-stacks',
-    '--stack-name',
-    required('QM_FREE_PLAN_STACK'),
-  ],
-  'us-east-1',
-).Stacks[0];
-const outputs = Object.fromEntries(
-  stack.Outputs.map((o) => [o.OutputKey, o.OutputValue]),
-);
-assert.equal(
-  outputs.CurrentPlanTier,
-  'FREE',
-  'Paid or unverified edge plan cannot deploy',
-);
-assert.equal(outputs.Status, 'ACTIVE', 'Edge plan must be active');
 const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
 assert.equal(manifest.version, 1);
 assert.equal(manifest.commit, commit);

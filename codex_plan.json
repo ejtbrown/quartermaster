@@ -1,9 +1,66 @@
 [
   {
+    "id": "COST-012",
+    "priority": "P0",
+    "title": "Retain recent backups frequently and historical backups weekly",
+    "description": "Implemented and applied 2026-09-24: seven-day Aurora PITR, 12-hour snapshots retained seven days, and Sunday snapshots retained 90 days from creation. Existing recovery points keep their current expiration dates. The reviewed saved plan changed only the development backup plan; live rules and a fresh no-change plan verified the rollout. Observe future scheduled jobs separately; see docs/DEPLOYMENT-2026-09-24.md.",
+    "rationale": "Reduce modeled older snapshot storage from $34.86 to about $2.52 per month at a constant 10 GB database without changing recent recovery granularity.",
+    "files_to_change": [
+      "infra/modules/foundation/backups.tf",
+      "infra/modules/foundation/tests/guardrails.tftest.hcl",
+      "tools/verify-deployment.mjs",
+      "infra/policies/check-plan.ts",
+      "infra/policies/check-plan.test.ts"
+    ],
+    "commands_to_run": [
+      "pnpm verify",
+      "pnpm infra:check",
+      "terraform -chdir=infra/environments/dev plan -input=false -var-file=deployment.local.tfvars -out=tiered-backups.tfplan",
+      "pnpm deployment:check"
+    ],
+    "acceptance_criteria": [
+      "Exactly two snapshot rules: 12-hour/seven-day and weekly/90-day; native PITR remains seven days.",
+      "No recovery point, vault, database, key or unrelated resource is deleted or replaced.",
+      "Live plan configuration and a subsequent no-change plan verify the applied policy; scheduled job success is a later operational check."
+    ],
+    "rollback_notes": "Restore the previous 12-hour/90-day rule through a new reviewed plan; this affects future snapshots only and cannot extend or recover already expired snapshots."
+  },
+  {
+    "id": "COST-013",
+    "priority": "P1",
+    "title": "Adopt standard CloudFront and WAF without weakening private origins",
+    "description": "Replace the abandoned Free subscription requirement with standard pay-as-you-go edge billing. The owner explicitly authorized deleting the failed empty quartermaster-dev-edge-free stack from AWS and Terraform, superseding the retention proposal. Clean up only that verified empty stack through a reviewed saved plan and remove the obsolete state-forget bypass. Verify the exact distribution/WAF and absence of subscription associations at release time. GitHub connection was verified AVAILABLE on 2026-09-24; see the deployment record for cleanup evidence.",
+    "rationale": "Accept the $6 fixed WAF baseline and usage billing while removing Free-plan eligibility as a release dependency.",
+    "files_to_change": [
+      "infra/environments/delivery/",
+      "tools/check-edge-plan.mjs",
+      "tools/deploy-release.mjs",
+      "infra/policies/check-plan.ts",
+      "infra/policies/check-plan.test.ts",
+      "tests/edge.test.ts",
+      "docs/decisions/0006-tiered-backups-and-standard-edge.md",
+      "RUNBOOK_ROLLOUT.md"
+    ],
+    "commands_to_run": [
+      "pnpm verify",
+      "pnpm infra:check",
+      "pnpm test:e2e",
+      "terraform -chdir=infra/environments/delivery plan -input=false -var-file=deployment.local.tfvars -out=standard-edge.tfplan",
+      "pnpm edge:check"
+    ],
+    "acceptance_criteria": [
+      "No Free subscription is created or required. Only the explicitly authorized failed empty stack is deleted; no application or data resource is destroyed.",
+      "Release-role read permissions remain scoped where supported, with no subscription mutation permission.",
+      "WAF rate limiting, AWS_IAM Lambda URLs and signed OAC remain intact.",
+      "Do not claim public release until exact-commit pipeline deployment, HTTPS smoke and unsigned-origin denial checks pass."
+    ],
+    "rollback_notes": "Keep the distribution unpublished if validation fails. Preserve deployment evidence and state versions; do not recreate the deleted failed stack or restore stale state as rollback. Any return to a subscription requires separate approval and validation."
+  },
+  {
     "id": "COST-001",
     "priority": "P0",
     "title": "Codify accepted operating and deployment constraints",
-    "description": "Apply accepted Q-001 through Q-009 and Q-031/Q-032: Erick operates the one-church SaaS pilot, privacy and human physical-work responsibility remain first-class, Ohio is primary, three US regions are approved, default-profile credentials select development, uptime is 99.5% with a 60-second cold start, recovery prefers at most one day of data loss with seven days tolerated, CI uses CodeBuild and CodePipeline, and the public repo's trusted native builds use mac-dev and linux-dev. Restore service within 24 hours; create a separate production account only after church acceptance while retaining development in the existing account.",
+    "description": "Apply accepted operating/infrastructure decisions: Erick operates the one-church SaaS pilot, privacy and human physical-work responsibility remain first-class, Ohio is primary, three US regions are approved, default-profile credentials select development, uptime is 99.5% with a 60-second cold start, recovery prefers at most one day of data loss with seven days tolerated, and the public repo uses CodeBuild and CodePipeline. Decision 0007 closes Q-013: one online-only mobile/desktop web client, no durable offline queue or native release prerequisite. Restore service within 24 hours; create a separate production account only after church acceptance while retaining development in the existing account.",
     "rationale": "The foundational direction is settled. Configuration and implementation gates must enforce it without confusing development credentials with production authorization or data-loss tolerance with recovery time.",
     "files_to_change": ["DESIGN.md", "docs/decisions/"],
     "commands_to_run": [
@@ -11,7 +68,7 @@
       "rg 'Status: accepted|Decision: accepted' docs/decisions"
     ],
     "acceptance_criteria": [
-      "Accepted Q-001 through Q-009 and Q-031/Q-032 records are retained; the decision register contains 11 accepted and 21 remaining questions.",
+      "Dated decision history is retained; decision 0007 closes Q-013 and supersedes native build/framework/local-storage assumptions in Q-009/Q-025 without changing the public-repository/cloud-CI decisions.",
       "The AI scope reflects human responsibility for physical work, advisory reminders, optional measurements, immediate skip handling, and church-configured restrictions without platform certification of worker qualifications.",
       "Configuration defaults to us-east-2, enforces approved processing destinations us-east-2/us-east-1/us-west-2, and records 99.5% uptime, the 60-second cold allowance, accepted 24-hour RTO, preferred 24-hour RPO, and tolerated 168-hour RPO."
     ],
@@ -74,8 +131,8 @@
       "All supported resources carry Application=Quartermaster, Environment, Owner=ErickBrown, CostCenter, DataClass, and ManagedBy=Terraform tags; untaggable resources have an inventory mapping.",
       "Account IDs, regions, names, role ARNs, DNS, keys, and integration references are parameterized; changing account configuration cannot silently replace or delete the source stack.",
       "A fixture containing each prohibited resource fails policy tests and the intended target plan passes.",
-      "Both environment plans use CloudFront Free and configure every Aurora instance with minimum 0 ACU and a 300-second auto-pause.",
-      "Read-only account checks prove each selected deployment account is eligible for CloudFront flat-rate plans; an ineligible account requires an explicit pay-as-you-go security/cost design.",
+      "Every Aurora instance has minimum 0 ACU and a 300-second auto-pause. Decision 0006 selects standard CloudFront/WAF for development; production remains a later account/bootstrap step.",
+      "Read-only checks verify standard development edge billing, its exact WAF and OAC-protected origins. No flat-rate subscription or eligibility gate is required.",
       "No cloud apply occurs as part of validation. An explicitly authorized deployment applies only the separately reviewed saved plan, verifies live controls and drift, and records the exact deployed subset.",
       "Resized photos have no age-based expiry; photo, asset, or tenant deletion ends their retention. The 15-day original rule never targets resized/ objects. Backup-purge and version-aware cleanup remain release gates.",
       "The initial backup role has no general-purpose AWS-managed backup policy, SSM/EC2 permissions, restoration, or cross-region copy permissions. A completed on-demand backup proves the narrowed role can protect the exact development cluster."
@@ -86,7 +143,7 @@
     "id": "COST-004",
     "priority": "P1",
     "title": "Build private CloudFront and serverless API ingress",
-    "description": "Current authorized development increment implements infra/environments/delivery: private S3 preview hosting, AWS_IAM health-only Lambda URL with OAC, ACM/DNS, WAF rate limit, and a Terraform-managed native CloudFormation FREE subscription. Publish only after the live subscription is ACTIVE and deploy the exact dev commit through CodePipeline. Authenticated core/conversation APIs and production remain later increments; do not mark those complete from a health-only release.",
+    "description": "Current authorized development increment implements infra/environments/delivery: private S3 preview hosting, AWS_IAM health-only Lambda URL with OAC, ACM/DNS and standard pay-as-you-go WAF/CloudFront per decision 0006. Publish after protected-origin/billing checks and deploy the exact dev commit through CodePipeline. COST-013 tracks the explicitly authorized failed Free stack deletion. Authenticated core/conversation APIs and production remain later increments; do not mark those complete from a health-only release.",
     "rationale": "This provides secure ingress without API Gateway, ALB, public origin bypass, VPC compute, or provisioned concurrency while keeping static and API traffic same-origin.",
     "files_to_change": [
       "infra/environments/delivery/",
@@ -147,12 +204,11 @@
   {
     "id": "COST-006",
     "priority": "P1",
-    "title": "Deliver web register and offline mobile capture",
-    "description": "Implement Cognito PKCE sessions, role-aware web estate/register/detail views, church data-administration controls, scoped temporary support access, configurable service/privacy/support identity initially naming Erick Brown, mobile structured capture, local durable operation/media queue, resumable synchronization, manual conflict resolution, and touch/keyboard accessibility fallbacks.",
-    "rationale": "A trustworthy non-AI product validates the domain and offline model before generative automation is allowed to create records.",
+    "title": "Deliver the online-only mobile capture and desktop register",
+    "description": "Implement Cognito PKCE server-side web sessions, role-aware estate/register/detail views, church data-administration controls, scoped temporary support access, configurable service/privacy/support identity initially naming Erick Brown, and foreground mobile structured capture in apps/web. Add server-saved drafts, honest acknowledgment-based save state, bounded foreground retry, stale-version conflict resolution, photo capture/upload and touch/keyboard fallbacks. No native app, persistent local asset cache, offline queue or background synchronization.",
+    "rationale": "One non-AI phone-to-desktop asset/photo workflow validates the domain, permissions and mobile browser capture before generative automation creates records, without committing to offline synchronization complexity.",
     "files_to_change": [
       "apps/web/",
-      "apps/mobile/",
       "packages/contracts/",
       "packages/auth/",
       "services/core-api/"
@@ -160,19 +216,20 @@
     "commands_to_run": [
       "corepack pnpm --filter web test",
       "corepack pnpm --filter web test:e2e",
-      "corepack pnpm --filter mobile test",
       "corepack pnpm test:contracts",
-      "corepack pnpm test:integration:sync"
+      "corepack pnpm test:integration:capture"
     ],
     "acceptance_criteria": [
-      "A field draft with media survives process death and a simulated multi-day outage, then synchronizes once without duplicates.",
-      "Overlapping edits require human conflict resolution and non-overlapping edits merge according to the documented policy.",
+      "A user signs in on a phone, creates an asset with a photo, receives a server acknowledgment, and finds/edits the same record on desktop.",
+      "Network/service loss pauses capture visibly; unsent input is not labeled saved or persisted as an offline queue. Foreground retry after an uncertain response produces no duplicate asset/media, and server-saved drafts can be resumed online. Unsent input need not survive reload/process death.",
+      "Stale record versions are rejected; the user can compare current server values and resolve conflicting edits without silent overwrite.",
+      "Actual iPhone Safari and Android Chrome pass camera/microphone permission, photo readability, upload interruption, screen-lock/tab-switching and session-expiry tests; viewport emulation alone is insufficient.",
       "All primary capture actions work without speech or AI and pass accessibility checks.",
       "Church administrators can manage memberships, permissions, records, exports, lifecycle requests, and scoped support grants; Erick's support sessions are expiring and audited.",
       "Privacy acceptance covers purpose, recipients, access, and retention/deletion for enabled features; operator identity can later change without rewriting tenant IDs or prior audit actors.",
-      "Web tokens are not stored in localStorage and mobile tokens use OS-protected storage."
+      "Mobile and desktop use opaque Secure/HttpOnly/SameSite web sessions with CSRF controls; bearer tokens and tenant content are not persisted in browser application storage/caches."
     ],
-    "rollback_notes": "Keep API contracts backward compatible with the last released mobile version. Disable new UI features by server capability flags without invalidating local drafts."
+    "rollback_notes": "Keep API contracts compatible with supported previous web releases/open tabs. Disable features with server capability flags without deleting acknowledged server drafts; warn before refreshing unsaved in-memory input."
   },
   {
     "id": "COST-007",
@@ -207,14 +264,14 @@
     "id": "COST-008",
     "priority": "P1",
     "title": "Implement the safe voice conversation controller",
-    "description": "Add short-lived Transcribe stream grants, DynamoDB TTL session state, versioned deterministic workflows, typed AI tools, schema and policy validation, platform-native TTS text responses, final review/transactional commit, and AI usage/circuit-breaker controls.",
+    "description": "Add short-lived Transcribe stream grants, foreground browser microphone capture, DynamoDB TTL session state, versioned deterministic workflows, typed AI tools, schema and policy validation, browser speech synthesis with device/privacy validation, final review/transactional commit, and AI usage/circuit-breaker controls. Stop capture on connection loss; no deferred offline audio.",
     "rationale": "This supplies the core voice-first UX while preventing autonomous mutation, unsafe prompts, quadratic context, and unbounded speech/model spend.",
     "files_to_change": [
       "infra/modules/ai/",
       "services/conversation-api/",
       "packages/domain/",
       "packages/contracts/",
-      "apps/mobile/",
+      "apps/web/",
       "db/migrations/",
       "docs/ai/"
     ],
@@ -231,7 +288,7 @@
       "Human-provided readings can be recorded without platform verification of trade qualifications; church-configured restrictions are enforced and generated instructions for hazardous physical work remain outside scope.",
       "Each admitted stream/turn/session has a tested maximum duration/token/image/attempt cost and tenant/global circuit breaker.",
       "The air-conditioner workflow creates the expected asset, two media links, reading, maintenance item, and access constraint exactly once.",
-      "AI outage falls back to manual capture without loss of draft/media."
+      "When the core service remains reachable, AI outage falls back to manual entry and preserves server-saved drafts/media. Connection loss visibly pauses capture without implying unsent browser input is durable."
     ],
     "rollback_notes": "Version and retain workflows/prompts. Disable AI admission and route sessions to manual controls; do not reinterpret or delete prior observations."
   },
@@ -270,7 +327,7 @@
     "id": "COST-010",
     "priority": "P1",
     "title": "Create supported CI CD and recovery operations",
-    "description": "Current authorized increment implements disposable CodeBuild GitHub Actions checks, separate verify/build/deploy IAM roles, and a dev-only CodePipeline V2 release from the public repository. Packages checksummed build outputs, tests a published Lambda version before alias promotion, and preserves previous website versions for rollback. Owner must complete the CodeConnections handshake; never upload a personal GitHub token. Cloud configuration remains reviewed saved-plan Terraform, separate from automatic least-privilege application releases. Production/main deployment, native SSH coordinator, expand-contract schema deployment, regional recovery and timed restore drills remain separate unfinished increments.",
+    "description": "Current authorized increment implements disposable CodeBuild GitHub Actions checks, separate verify/build/deploy IAM roles, and a dev-only CodePipeline V2 release from the public repository. Packages checksummed build outputs, tests a published Lambda version before alias promotion, and preserves previous website versions for rollback. CodeConnections was AVAILABLE on September 24; recheck before deployment and never upload a personal GitHub token. Publish the reviewed standard-edge source before enabling automatic releases. Cloud configuration remains reviewed saved-plan Terraform, separate from automatic least-privilege application releases. Production/main deployment, expand-contract schema deployment, regional recovery and timed restore drills remain unfinished. Native SSH coordinator/signing is deferred under decision 0007, not a release gate.",
     "rationale": "Supported service roles, immutable promotion, and tested rollback/recovery are required to deploy the cost-optimized architecture safely.",
     "files_to_change": [
       ".github/workflows/",
@@ -294,7 +351,7 @@
     "acceptance_criteria": [
       "Public pull-request jobs run on disposable CodeBuild Linux runners with restricted IAM, no deployment/signing secrets, and no path to the LAN; untrusted workflows cannot dispatch mobile jobs.",
       "The dev branch deploys only dev in the existing account and main only production in the separate production account through distinct roles/state/resources. Production deployment remains disabled until church acceptance and production bootstrap are complete.",
-      "The local coordinator polls only its CodePipeline custom-action jobs, dispatches exact reviewed commit IDs over SSH to mac-dev/linux-dev, verifies toolchains and artifact provenance, and reports completion without public SSH or an always-on cloud bridge.",
+      "One immutable web artifact serves desktop and mobile with matching commit provenance; no native signing/store account, local SSH coordinator or offline synchronization capability is required for release.",
       "Production apply consumes the reviewed saved plan and cannot silently re-plan.",
       "A restore drill validates row counts, tenant isolation, referenced original media versions/checksums, idempotent recovery, and sign-in against the preferred 24-hour RPO; backup age beyond 24 hours alerts and the seven-day tolerated ceiling is never mistaken for normal cadence.",
       "The measured backup/copy/restore cost is recorded; a timed restore drill demonstrates the accepted 24-hour RTO including detection/operator response and core-service validation. Production bootstrap evidence records church acceptance and a production account ID distinct from development.",

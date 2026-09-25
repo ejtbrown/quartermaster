@@ -13,7 +13,7 @@ run "private_bootstrap" {
   command = plan
   assert {
     condition     = !aws_cloudfront_distribution.site.enabled && length(aws_route53_record.site) == 0
-    error_message = "Do not publish before FREE plan activation is verified."
+    error_message = "Do not publish before standard edge and private-origin checks pass."
   }
   assert {
     condition     = aws_lambda_function_url.api.authorization_type == "AWS_IAM" && aws_lambda_function.api.reserved_concurrent_executions == 5
@@ -22,6 +22,10 @@ run "private_bootstrap" {
   assert {
     condition     = length(aws_codepipeline.release) == 0
     error_message = "Pipeline requires the owner's completed connection."
+  }
+  assert {
+    condition     = length(aws_wafv2_web_acl.site.rule) == 1 && one(aws_wafv2_web_acl.site.rule).statement[0].rate_based_statement[0].limit == 300
+    error_message = "Preserve the approved one-rule WAF baseline and rate limit."
   }
 }
 run "pipeline_roles_and_branch" {

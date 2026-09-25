@@ -8,6 +8,14 @@ Scope: architecture proposed in [DESIGN.md](DESIGN.md) and inventoried in [inven
 
 ## Executive summary
 
+### Accepted development revision — 2026-09-24
+
+The owner selected standard CloudFront/WAF and weekly snapshots beyond seven days. This supersedes the older Free-plan recommendations below for development. Preserve seven-day native PITR and 12-hour recent snapshots; retain one weekly snapshot for 90 days from creation. At 10 GB, the resulting steady-state database/secret/snapshot/WAF component is about **$9.92/month**, not $42.26. Existing snapshots are not pruned, so savings are gradual. Rates and exclusions are in the cost model's current-decision section.
+
+The development scale-to-zero heuristic remains **8.7/10**: -1.0 for the now-explicitly accepted $6/month WAF baseline and -0.3 for retained data/credentials. Application compute remains zero-minimum; security is not weakened to improve this score. The three largest modeled retained/fixed components are WAF ($6), older snapshots (~$2.52), and database storage ($1). Snapshot bytes scale with database size and count; standard edge usage can exceed free allowances, unlike the abandoned flat-rate bundle.
+
+P0 / implemented and applied: replace the 90-day retention on frequent snapshots with seven days and add a weekly/90-day rule in `infra/modules/foundation/backups.tf`; update tests and live checks. P1: remove Free-only publication checks and preserve WAF/OAC and private origins. The owner's follow-up explicitly authorizes deleting the failed empty `quartermaster-dev-edge-free` stack from both AWS and Terraform, superseding the retained-stack proposal. Only the verified empty stack is in scope; never manually rewrite state or delete application resources. GitHub authorization is AVAILABLE. Public preview release still requires a successful pipeline and HTTPS/origin-denial checks. No real church data is admitted by this revision.
+
 2026-09-08 deployment exception: hosting was partially created but AWS rejected FREE eligibility. Public ingress remains disabled and no paid subscription was approved. The unbundled WAF currently adds about $6/month prorated; the temporary deployed-configuration heuristic is **8.7/10**, deducting one additional point from the target 9.7/10 for this avoidable fixed edge charge. At the illustrative mature 10 GB database size the database/secret/snapshots plus this WAF total about $42.26/month before activity/other services. The cause and non-destructive recovery gates are recorded in `docs/DEPLOYMENT-2026-09-08.md`; remove the additional deduction only after FREE activation is independently verified. The full-target recommendations below are not a claim that public deployment succeeded.
 
 Delivery milestone authorized after the initial foundation: implement GitHub → CodeBuild/CodePipeline and deploy the ready web/API and supporting cloud services. Execute backlog tasks COST-003/004/010 incrementally (the recommendation numbering below predates that backlog), with ephemeral unprivileged PR runners separated from trusted artifact deployment. CodeConnections requires the owner's interactive GitHub authorization; complete safe in-scope implementation while that is pending. `infra/environments/delivery` isolates delivery state; GitHub checks, pipeline builds, and artifact publication have separate scoped roles. Native CloudFormation bridges the pinned provider's missing FREE subscription resource. No production, paid edge-plan substitution, or real-data/AI activation is implied. The delivery cost increment is modeled in cost_model.md; no warm runner, NAT, API Gateway, or provisioned Lambda is added.
@@ -72,7 +80,7 @@ The modeled idle bill includes retained database/media/backup bytes, credentials
 
 The operational blockers are configuration regressions rather than components in the selected design. Policy tests must fail any nonzero Aurora minimum, provisioned instance, RDS Proxy, logical replication, Aurora Global Database, zero-ETL integration, Babelfish configuration, synthetic keepalive, or in-database scheduler dependency. Scheduled business work runs through EventBridge Scheduler; `pg_cron` jobs can be skipped while Aurora is paused.
 
-The proposed AWS design has no NAT gateway, load balancer, public IPv4, RDS Proxy, ElastiCache, provisioned concurrency, OpenSearch, ECS/EKS, provisioned model throughput, or warm cloud CI runner blocker. Existing local mobile machines and their on-demand coordinator sit outside the AWS runtime; hardware, electricity, maintenance, and signing-program fees remain external costs. Public-PR jobs must never run on these trusted signing/LAN hosts.
+The proposed AWS design has no NAT gateway, load balancer, public IPv4, RDS Proxy, ElastiCache, provisioned concurrency, OpenSearch, ECS/EKS, provisioned model throughput, or warm cloud CI runner blocker. Decision 0007 defers native builds/signing and the local coordinator; optional browser/device testing remains outside the AWS runtime estimate. Public-PR jobs must never run on persistent local/LAN hosts.
 
 ## 4. Scale-to-zero score
 
@@ -137,7 +145,7 @@ Conversation state in DynamoDB prevents long voice sessions from pinning relatio
 - Keep API bundles small and use arm64. No provisioned concurrency initially.
 - Lambda cold starts should be subdominant to database/model calls and measured separately.
 - Both Aurora writers are expected to pause after five idle minutes. A Data API request resumes the writer; after more than 24 hours, deep-sleep activation can take 30 seconds or longer.
-- The static shell/authentication and cached/offline data remain available while the UI displays “Starting Quartermaster.” Use a 60-second timeout, at most three bounded attempts, and the same idempotency key for a retried mutation.
+- The static shell displays “Starting Quartermaster” while online data requests wait for activation; current-tab input remains in memory on a best-effort basis. Decision 0007 excludes offline data/durable local drafts. Use a 60-second timeout, at most three bounded attempts, and the same idempotency key for a retried mutation; only server acknowledgment means saved.
 - Do not perform post-login warm-up requests, synthetic health queries, or keepalive traffic. Only real user or scheduled work should wake the database.
 
 ### 6.5 Backpressure and queue lag
@@ -148,9 +156,9 @@ Conversation state in DynamoDB prevents long voice sessions from pinning relatio
 - DLQ on first message alerts, and replay uses a reviewed tool that preserves attempt history.
 - If AI is saturated, accept/uploads drafts and tell the user extraction is delayed. Core capture must not fail merely because AI is unavailable.
 
-### 6.6 Sync conflicts and event order
+### 6.6 Concurrent edits and event order
 
-Mobile operations carry client operation IDs, base versions, and dependencies. The server is authoritative. Non-overlapping field changes may merge; conflicting changes require resolution. Outbox consumers tolerate duplicates and out-of-order arrival using aggregate versions. Notifications are hints; clients always re-read server state.
+Online mutations carry operation/idempotency IDs and base versions. The server is authoritative; stale updates require reconciliation without silent overwrite. No client offline queue or dependency-ordered synchronization is required under decision 0007. Server outbox consumers still tolerate duplicates and out-of-order arrival using aggregate versions. Notifications are hints; clients re-read server state while connected.
 
 ## 7. Prioritized recommendations
 
@@ -274,7 +282,7 @@ The original recommendations below describe the full target. The current build d
 - Load tests report actual cost dimensions per 1,000 core requests, AI turns, images, and voice minutes.
 - Cost and Usage Report/dashboard maps spend to environment and the product counters reconcile within an agreed tolerance.
 - Recovery tests validate a completed, consistent database-and-original-media recovery point preferably within 24 hours; failures or age violations alert, and seven days is never silently substituted as the normal schedule. Budget copy storage/transfer and actual restore drills.
-- Public-PR jobs are disposable and have no signing credentials or local-LAN access. Trusted mobile artifacts carry the reviewed commit, toolchain versions, and checksums from `mac-dev`/`linux-dev`.
+- Public-PR jobs are disposable and have no signing credentials or local-LAN access. Shared mobile/desktop web artifacts carry the reviewed commit and checksums; native artifacts/signing are deferred under decision 0007.
 - Terraform validates the expected development account from protected configuration, requires a distinct production account after the church-acceptance gate, and applies required tags without printing sensitive host/account details into the public repository.
 
 ## 9. Deployment status

@@ -1,8 +1,10 @@
 # Quartermaster rollout and recovery runbook
 
-Status: foundation deployed; hosting/CI scripts implemented and hosting partially provisioned. FREE subscription eligibility and GitHub authorization block public release; see `docs/DEPLOYMENT-2026-09-08.md`. Later full-product procedures remain planned.
+Status: foundation deployed; hosting/CI scripts implemented and hosting partially provisioned. On 2026-09-24 the owner selected standard CloudFront/WAF and weekly historical snapshots; GitHub authorization is AVAILABLE. Follow the revision procedure below, which supersedes earlier Free-plan gates. Later full-product procedures remain planned.
 
-Date: 2026-09-07
+Date: 2026-09-25 (living runbook; historical procedures are labeled)
+
+Client scope: [decision 0007](docs/decisions/0007-online-only-mobile-web.md) accepts one online-only mobile/desktop web client. Native builds/signing, store distribution, the SSH coordinator, offline queues and background synchronization are not v1 release requirements. Verify foreground interruption/retry and acknowledgment-based save status instead. This documentation update performs no cloud deployment.
 
 Deployment status: data/governance validated; private health API and disabled hosting provisioned. Website publication, remote CI/CD, identity, mobile, AI, and regional recovery remain pending.
 
@@ -10,7 +12,19 @@ Consult `docs/IMPLEMENTATION.md` for verified commands and the exact deployed su
 
 ## Current development hosting and CI/CD milestone
 
-Execution is currently blocked: the retained subscription stack is CREATE_FAILED/tainted and the GitHub connection is PENDING. Do not repeat the old plan or permit Terraform replacement. Follow the latest deployment record's recovery gates first.
+### September 24 revision procedure
+
+1. Run `pnpm verify`, `pnpm infra:check` and `pnpm test:e2e`. Check STS against the protected development account input and verify the existing Ohio backends. Preserve ignored inputs, plans, state and `.codex-resume`.
+2. Save a fresh foundation plan: `terraform -chdir=infra/environments/dev plan -input=false -var-file=deployment.local.tfvars -out=tiered-backups.tfplan`. Protect files with mode 0600. Inspect the entire JSON/text plan and run `terraform -chdir=infra/environments/dev show -json tiered-backups.tfplan | pnpm policy:plan`. Require exactly one in-place backup-plan update, with 12-hour/seven-day and Sunday/90-day rules; no other managed changes. Record its checksum, apply that exact saved plan, verify live rules, run `pnpm deployment:check`, and require a fresh no-change plan. Existing recovery points retain their expiry; do not prune them. Validate upcoming scheduled jobs separately.
+3. The owner explicitly authorized deletion of the failed empty `quartermaster-dev-edge-free` stack, replacing the retention proposal. Verify its exact account/region/ARN, CREATE_FAILED status, and absence of any Subscription physical ID. Remove the obsolete resource/removed block. For this one-off failure cleanup only, save a targeted `delete-failed-edge-stack.tfplan`; inspect it and require exactly one managed action: delete that exact stack, with no creates, replacements, forget actions or other updates. Generic CI guardrails continue rejecting deletions/forget operations; the separately authorized operator cleanup uses explicit exact-target assertions, not a permanent bypass. Apply the reviewed saved plan, verify AWS deletion and absence from Terraform state, and run a full post-cleanup plan. If obsolete root outputs remain after targeting, reconcile only those with a reviewed refresh-only plan; do not run `state rm`, `state push` or blind untaint. Never repeat the old saved Free/retention plans.
+4. With `publish_site=false` and `enable_pipeline=false`, save/review a fresh `standard-edge-after-cleanup.tfplan`. Expected remaining changes are the distribution comment and the formerly blocked release IAM policy. The failed stack must not appear as any planned resource. Fix the empty S3/OAC serialization difference without ignoring origin security. New release-role permissions are exact distribution/WAF reads and account-level read-only `pricingplanmanager:ListSubscriptions` (the list API has no resource-level scope); no subscription mutation is granted. Record the plan checksum and validate live standard billing with `QM_EXPECTED_ACCOUNT_ID` and `QM_DISTRIBUTION_ID` supplied privately to `pnpm edge:check`.
+5. GitHub connection was verified AVAILABLE on September 24; recheck before planning `enable_pipeline=true`. Preserve public-fork approval and checks/build/deploy role separation. Publish the reviewed dev commit only after the current source passes all checks; never release the old commit that still requires FREE. Main/production remain disabled.
+6. Before publication verify IAM-only Lambda URL, signed OAC, private S3, WAF rate limiting and uncached API behavior. Apply an independently reviewed publication plan for only this distribution and qm A/AAAA records. Require successful exact-commit CodePipeline build/deploy and HTTPS smoke, correct health SHA, asset API still disabled, security headers, and direct unsigned origins denied. No public release is claimed before these checks pass.
+7. On failure keep ingress off or restore prior versioned application pointers as appropriate. Never destroy backups, database or state. The explicitly authorized deletion of the failed empty stack is a one-off cleanup, not a general deletion exception. Roll back the backup cadence only through a new reviewed plan; changing a rule does not extend existing recovery-point expiry. Check actual billed snapshot GB and WAF/CloudFront usage after rollout; the $9.92 illustrative component subtotal and $100 budget are not billing caps.
+
+### Historical September 8 procedure (Free-plan steps superseded above)
+
+The retained subscription stack was CREATE_FAILED/tainted and the GitHub connection was PENDING. Do not repeat the old plan or permit Terraform replacement.
 
 The subsequent user request authorizes publishing this public repository and deploying the existing synthetic website/health API through GitHub → CodePipeline V2 → CodeBuild. Production, native signing, real-data intake, schema application, and AI are not part of this delivery milestone. Commands below are implemented; the later full-product procedures remain targets.
 
@@ -52,7 +66,7 @@ Core rules:
 - Roll application code/configuration back only while schema compatibility is proven. Correct database changes forward; restore only for actual data loss/corruption under the recovery procedure.
 - Stop on unrequested deletion/replacement, wrong account/region/branch, broadened IAM, public data access, missing backup, failed migration gate, or absent rollback evidence.
 - Apply accepted Q-004: humans decide whether and how physical work is performed; AI reminders are advisory, readings are optional, and skipping never prevents saving an asset. Release checks verify that behavior and church-configured restrictions rather than certifying worker qualifications.
-- Keep every Aurora instance at `min_capacity=0`, use a five-minute auto-pause, and use CloudFront Free unless a separately approved architecture decision explicitly supersedes the scale-to-zero requirement.
+- Keep every Aurora instance at `min_capacity=0` with a five-minute auto-pause. Decision 0006 accepts standard CloudFront/WAF without changing the zero-idle-application-compute requirement.
 - Do not send synthetic health, login warm-up, keepalive, empty scheduled scan, or outbox-poll traffic to the database. EventBridge Scheduler owns actual due work; delayed SQS triggers wake exact outbox batches; do not depend on `pg_cron` while Aurora can pause.
 - Local development/testing uses profile `default` and explicit region `us-east-2`; verify the expected account ID before plan/apply. CI uses environment-specific roles and production placement must be explicitly configured, not inferred from the local profile.
 - Preserve the accepted 99.5% availability, 60-second cold-start allowance, 24-hour regional recovery time, preferred 24-hour recovery-point age, and tolerated seven-day data-loss ceiling. A backup failure alerts immediately; measure recovery duration and data-loss age separately.
@@ -71,7 +85,7 @@ Before Phase 1 infrastructure:
 - The launch scope is one real church on the multi-tenant SaaS, initially using air-conditioner and appliance templates. Isolation tests use at least two synthetic tenants.
 - Service identity and support/privacy contacts identify Erick Brown initially, and church data controls are included in pilot acceptance.
 - AI workflows implement advisory reminders and optional data capture, without certifying a person or work site or generating hazardous physical procedures.
-- Mobile build hosts are selected: `mac-dev` for iOS and `linux-dev` for Android. Validate actual toolchains, key/provisioning/store-credential custody, and the local release coordinator before the first signed build.
+- Decision 0007 defers native releases and closes offline scope. Validate the online-only mobile browser workflow on actual iPhone/Android devices; native toolchains, signing credentials and a local coordinator are not prerequisites. Leave existing `mac-dev`/`linux-dev` configuration untouched.
 
 Before each affected feature release, close its P1 questions from `DESIGN.md`.
 
@@ -79,11 +93,11 @@ Before each affected feature release, close its P1 questions from `DESIGN.md`.
 
 - Operator has read-only organization/account discovery and a narrowly scoped deployment role for the named environment.
 - Development's expected account ID is recorded in protected configuration and checked against `default` profile STS output. Production's expected account/role is recorded when its separate account is created after church acceptance. Account guards must require distinct development/production IDs, with separate state, resources, and roles; do not point production at the existing development account.
-- Read-only account checks confirm each selected deployment account is eligible for CloudFront flat-rate plans; otherwise select an explicit pay-as-you-go CloudFront/WAF/DNS design.
+- Read-only account checks verify the intended standard CloudFront/WAF resources and absence of an unintended subscription association; Free-plan eligibility is no longer a gate.
 - GitHub CodeConnections/CodeBuild runner integration targets only this repository and has branch/event filters.
 - `dev` and `main` are protected. Required reviews/checks and production environment approval are enabled.
 - No long-lived AWS keys are stored in GitHub or the repository.
-- App Store/Play credentials and signing material use the approved encrypted secret path and are never printed in logs.
+- No App Store/Play credentials or signing material are required for the web release. Existing private material must not enter the repository or logs.
 
 Observed on 2026-09-07: `default` authenticates and selects Ohio; GitHub reports the repository PUBLIC; both SSH hosts answer. Xcode 26.1.1 is present on the Mac, Java 17/Node are on the Linux command path, but complete mobile SDK/signing readiness has not been verified. The read-only checks did not register runners or configure either host.
 
@@ -164,7 +178,7 @@ feature → PR to dev
   → offline Terraform validation (account-backed speculative plans run only after review)
 ```
 
-Fork PRs receive no signing/deployment secrets, local SSH credentials, or private-network access. A workflow must not check out and run untrusted PR code under `pull_request_target`. Native mobile jobs on persistent hosts run only through the trusted release lane below.
+Fork PRs receive no signing/deployment secrets, local SSH credentials, or private-network access. A workflow must not check out and run untrusted PR code under `pull_request_target`. Persistent local hosts are not public-PR runners; no native release lane is required in v1.
 
 ### 4.2 Development pipeline
 
@@ -201,18 +215,17 @@ Source commit
   → release tag/evidence
 ```
 
-Production never deploys directly from `dev`, an unreviewed workspace, or an ad hoc locally rebuilt artifact. Native artifacts built by the trusted pipeline coordinator below are release artifacts only after their provenance and checksums pass the same promotion gates.
+Production never deploys directly from `dev`, an unreviewed workspace, or an ad hoc locally rebuilt artifact. The same immutable web artifact serves both phone and desktop experiences.
 
-### 4.4 Local mobile release lane
+### 4.4 Mobile browser release validation; native lane deferred
 
-1. CodePipeline creates a custom build/test job for a reviewed immutable `dev` or `main` commit and its protected source artifact. Start the release coordinator on this development host when the mobile job is requested.
-2. The coordinator authenticates with a dedicated, restricted role, polls/acknowledges only the Quartermaster custom action over outbound HTTPS, checks the exact source SHA and allowed job type, and creates isolated working directories on the selected SSH host.
-3. Dispatch iOS work to `mac-dev` and Android work to `linux-dev`. Validate pinned toolchains and host keys first. Keep signing keys in their protected host storage; do not forward general AWS credentials or SSH keys into the build process.
-4. Build/test and, for the authorized release stage, sign the artifacts. Return a manifest containing the source SHA, lockfile/toolchain versions, artifact checksums, platform, and test/signing result. Check that the returned manifest matches the pending pipeline job.
-5. Upload the immutable artifacts using the job's restricted artifact access and report success/failure to CodePipeline. Cleanup targets only the specific job directory after required evidence is retained; never delete shared SDKs, signing stores, or another job's files.
-6. If a host or coordinator is offline, leave the mobile job pending until its configured timeout, then fail visibly and retry the exact release through the supported path. The running cloud service and independent web/API releases do not depend on host uptime.
+1. Release the shared `apps/web` artifact through the web/API pipeline; do not create native build/signing/custom-action jobs.
+2. For the authenticated capture milestone, validate camera/microphone permissions, fallback controls, photo readability and foreground speech on actual iPhone Safari and Android Chrome. Record device/browser versions; responsive desktop screenshots alone are not sufficient.
+3. Exercise denied permissions, session expiry, tab switching, screen lock, connection loss, interrupted uploads and lost save responses. Require explicit unsaved status, safe foreground retry and no duplicate committed records/media. Do not require unsent input to survive process death.
+4. Verify acknowledged server drafts resume online, optimistic conflicts are visible, tenant responses are not persisted in browser application caches, and optional installation does not imply offline availability.
+5. Retain compatibility with supported previous web releases/open tabs and warn before refreshing unsaved input. Do not rely on every browser immediately loading the new release.
 
-The SSH aliases resolve only from the local environment; CodeBuild does not have a LAN route. No public SSH endpoint or persistent cloud bridge is created. Public PRs cannot create these jobs or use the persistent machines as general GitHub runners.
+`mac-dev` and `linux-dev` remain optional testing hosts; no changes to their keys, toolchains or services are implied. Public PRs cannot use persistent LAN machines as runners. The synthetic preview continues denying camera/microphone until the authenticated capture feature and its scoped permission/CSP/CORS changes are ready.
 
 ## 5. Environment rollout procedure
 
@@ -223,7 +236,7 @@ The SSH aliases resolve only from the local environment; CodeBuild does not have
 3. Verify latest successful automated backup and last restore-drill evidence.
 4. Verify queues/DLQs are healthy, no incident is active, and cost/availability alarms are normal.
 5. Review migration classification: additive, backfill, constraint/index, or contract/destructive.
-6. Confirm old mobile clients remain compatible with the new server/schema.
+6. Confirm supported previous web releases/open tabs remain compatible with the new server/schema.
 7. Review expected cost delta and any policy exceptions.
 
 Planned read/validation commands:
@@ -295,12 +308,12 @@ Do not run an unplanned `terraform apply` and do not regenerate a plan between a
 
 1. Expand: add nullable columns/tables/indexes or new enum/reference rows while old code still works.
 2. Deploy server code that writes both representations if required and reads compatibly.
-3. Deploy web; release mobile only after server compatibility tests.
+3. Deploy the shared mobile/desktop web client after server compatibility tests.
 4. Backfill asynchronously in idempotent tenant/key batches with progress, rate, error, pause, and resume controls.
 5. Verify counts, constraints, sampled values, RLS, query plans, and old/new client behavior.
 6. Switch reads with a versioned feature flag.
 7. Observe through at least the agreed compatibility window.
-8. Contract in a separate release after supported old mobile versions no longer depend on the old schema.
+8. Contract in a separate release after supported previous web versions no longer depend on the old schema.
 
 Never combine a destructive contract with the first deploy that introduces its replacement. Snapshot before material backfill/constraint work. Do not log row contents.
 
@@ -315,7 +328,7 @@ Never combine a destructive contract with the first deploy that introduces its r
 - From a confirmed paused state, verify the first Data API-backed request shows the activation state, finishes within the cold SLO, uses no more than three attempts, and preserves the mutation idempotency key.
 - Expand traffic after error/latency/queue/database/model metrics stay within thresholds for the defined observation period.
 
-Web and API can roll out immediately after server checks. Mobile store releases use staged/phased release and remain backward compatible; do not make a server breaking change dependent on instant client uptake.
+Web and API can roll out after server checks. Mobile browsers receive the same web release; retain compatibility with open tabs and warn before required refresh. Do not make a breaking server change depend on instant client uptake. Native store releases are deferred.
 
 ## 6. Acceptance checks
 
@@ -326,7 +339,7 @@ Web and API can roll out immediately after server checks. Mobile store releases 
 - RLS adversarial request between two test tenants is denied.
 - Direct S3 and Lambda Function URL origins are denied; CloudFront succeeds.
 - Media upload/complete/process/variant/observation flow produces exactly one result.
-- Offline draft synchronization resumes without duplicate records/media.
+- Online-only capture pauses visibly on connection loss; foreground retries after ambiguous responses do not duplicate records/media. Only acknowledged server state is labeled saved; no durable local queue is created.
 - Search, bounded report, rule dry-run, and export respect tenant/capability scope.
 - A committed outbox batch is delivered from its pre-commit delayed trigger; a trigger for a failed transaction is a no-op, duplicate triggers are idempotent, and no database poller runs.
 - AI-disabled manual path works; AI proposals require configured confirmation.
@@ -373,7 +386,7 @@ Use a release dashboard keyed by commit/version and compare canary/current:
 - DynamoDB throttles, SQS age/receive count/DLQ, media/export/rule completion.
 - Cognito sign-in/token errors and authorization denials.
 - Transcribe grants/minutes/errors and Bedrock request/token/image/latency/schema/fallback/correction.
-- Mobile sync failures/conflicts and web client error rate.
+- Mobile browser upload/save failures, stale-version conflicts, permission failures and web client error rate.
 - Estimated hourly/daily spend by service/environment.
 
 Keep the deploy operator engaged through the canary and initial full-traffic observation window. A pipeline success status alone is not acceptance.
@@ -389,7 +402,7 @@ Rollback/disable the release when any approved threshold is crossed, including:
 - sustained SLO/error burn, database saturation, or core starvation;
 - queue/DLQ growth that cannot recover within the defined window;
 - model/transcription spend rate or retries exceed circuit-breaker limits;
-- old supported mobile client cannot perform a core workflow;
+- a supported previous web release cannot perform a core workflow;
 - infrastructure apply differs from the approved plan or changes the wrong account/region;
 - backup/restore protection is degraded.
 
@@ -443,7 +456,7 @@ The primary region is Ohio, with Oregon the proposed backup target and N. Virgin
 7. Recreate/validate Cognito configuration. Follow the approved user reset/re-verification procedure where credentials cannot be recovered.
 8. Validate schema/migrations, row/entity counts, RLS adversarial tests, audit/outbox continuity, media checksums, sign-in, and critical workflows.
 9. Change DNS only after approval and a reviewed plan; communicate RPO gap and feature limitations. Record when validated core service is usable again and the elapsed recovery time against the 24-hour target.
-10. Monitor, reconcile queued/offline operations carefully, recover pending durable outbox work, and prevent duplicate commit through durable idempotency records. Recreate expired sessions/cursors rather than assuming regional DynamoDB sessions survived.
+10. Monitor, recover pending durable server outbox work and acknowledged drafts, and prevent duplicate commits through durable idempotency records. Recreate expired sessions rather than assuming regional DynamoDB sessions survived. There is no client offline queue; unacknowledged browser input is not recoverable through server backups.
 11. Fail back only as a separate planned migration after the original region is trusted and data divergence is resolved.
 
 Quarterly restore drill:
@@ -461,7 +474,7 @@ This is a future migration procedure, not an instruction to move the current pro
 1. Confirm the exact source/destination accounts, regions, application version, downtime/RPO window, and rollback path. Inventory both taggable Quartermaster resources and untaggable dependencies from Terraform and the resource mapping.
 2. Bootstrap a new target backend/roles and review a target-stack plan with the same modules and target-specific variables. Preserve the original state and resources; a provider-account edit or state move does not transfer AWS resources.
 3. Copy or restore database/media/artifacts, re-encrypt under target keys where needed, and re-establish Cognito identities or the documented reset flow, secrets, DNS/certificates, CodeConnections, and pipeline permissions. Check ownership/key-sharing restrictions before copying; no blanket key or credential rotation is inferred.
-4. Validate tenant isolation, record counts, referenced media checksums, authentication, AI region routing, idempotency, and backup recovery in the target. Freeze or reconcile writes for the agreed cutover window and keep mobile API compatibility.
+4. Validate tenant isolation, record counts, referenced media checksums, authentication, AI region routing, idempotency, and backup recovery in the target. Freeze or reconcile writes for the agreed cutover window and keep supported web-client API compatibility.
 5. Cut over DNS/integration endpoints only as part of the approved migration execution, monitor, and preserve the source through the rollback window. Retiring source resources is a separately scoped decision with exact targets; tags alone never authorize deletion.
 
 ## 11. Post-rollout cost verification

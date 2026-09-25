@@ -297,10 +297,24 @@ const { BackupPlan: backupPlan } = await aws(
   plan.BackupPlanId,
 );
 check(
-  '12-hour database snapshots retained 90 days',
-  backupPlan.Rules.length === 1 &&
-    backupPlan.Rules[0].ScheduleExpression === 'cron(0 0/12 * * ? *)' &&
-    backupPlan.Rules[0].Lifecycle.DeleteAfterDays === 90,
+  '12-hour/seven-day and weekly/90-day database snapshots',
+  backupPlan.Rules.length === 2 &&
+    [
+      ['database-every-12-hours', 'cron(0 0/12 * * ? *)', 7],
+      ['database-weekly-90-days', 'cron(0 0 ? * SUN *)', 90],
+    ].every(([name, schedule, retention]) =>
+      backupPlan.Rules.some(
+        (rule) =>
+          rule.RuleName === name &&
+          rule.ScheduleExpression === schedule &&
+          rule.ScheduleExpressionTimezone === 'Etc/UTC' &&
+          rule.Lifecycle.DeleteAfterDays === retention &&
+          rule.TargetBackupVaultName === 'quartermaster-dev-database' &&
+          rule.EnableContinuousBackup === false &&
+          rule.StartWindowMinutes === 60 &&
+          rule.CompletionWindowMinutes === 180,
+      ),
+    ),
 );
 const { BackupSelectionsList: selections } = await aws(
   'backup',

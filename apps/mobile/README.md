@@ -1,3 +1,5 @@
-# Mobile implementation boundary
+# Deferred native implementation boundary
 
-The chosen direction remains React Native with iOS builds on `mac-dev` and Android builds on `linux-dev`. This milestone supplies shared contracts and retention policy, not a native app or signing configuration. Offline synchronization, local encrypted storage, camera/voice workflows, and signed native builds remain upcoming implementation work. Do not treat the web preview as a mobile implementation.
+Under [decision 0007](../../docs/decisions/0007-online-only-mobile-web.md), mobile field capture belongs in the shared responsive client at `apps/web`. The first release is online-only: no durable local draft/media/audio queue or background synchronization.
+
+This directory is a deferred placeholder, not an active React Native application. Native builds, signing, stores and the SSH release coordinator are not launch prerequisites. The existing web preview remains synthetic; authenticated camera/voice capture is still implementation work, not an already-working feature.

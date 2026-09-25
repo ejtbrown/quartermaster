@@ -78,7 +78,7 @@ resource "aws_cloudfront_distribution" "site" {
   enabled             = var.publish_site
   is_ipv6_enabled     = true
   aliases             = [local.domain]
-  comment             = "Quartermaster development preview; FREE plan required before publishing"
+  comment             = "Quartermaster development preview; standard CloudFront and WAF billing"
   default_root_object = "index.html"
   http_version        = "http2and3"
   price_class         = "PriceClass_100"
@@ -88,7 +88,6 @@ resource "aws_cloudfront_distribution" "site" {
     origin_id                = "web"
     domain_name              = aws_s3_bucket.delivery["web"].bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.origins["s3"].id
-    s3_origin_config { origin_access_identity = "" }
   }
   origin {
     origin_id                = "api"
@@ -140,44 +139,6 @@ resource "aws_cloudfront_distribution" "site" {
   lifecycle { prevent_destroy = true }
 }
 
-# AWS provider 6.63 has no Pricing Plan Manager resource. The official native
-# CloudFormation resource keeps subscription ownership in Terraform without
-# shell provisioners or paid-plan approval permissions.
-resource "aws_cloudformation_stack" "edge_free" {
-  provider         = aws.edge
-  name             = "${local.name}-edge-free"
-  disable_rollback = true
-  parameters = {
-    DistributionArn = aws_cloudfront_distribution.site.arn
-    WebAclArn       = aws_wafv2_web_acl.site.arn
-  }
-  template_body = jsonencode({
-    AWSTemplateFormatVersion = "2010-09-09"
-    Parameters = {
-      DistributionArn = { Type = "String" }
-      WebAclArn       = { Type = "String" }
-    }
-    Resources = {
-      Subscription = {
-        Type                = "AWS::PricingPlanManager::Subscription"
-        DeletionPolicy      = "Retain"
-        UpdateReplacePolicy = "Retain"
-        Properties = {
-          PlanFamily   = "CloudFront"
-          PlanTier     = "FREE"
-          UsageLevel   = "DEFAULT"
-          ResourceArns = [{ Ref = "DistributionArn" }, { Ref = "WebAclArn" }]
-        }
-      }
-    }
-    Outputs = {
-      SubscriptionArn = { Value = { Ref = "Subscription" } }
-      CurrentPlanTier = { Value = { "Fn::GetAtt" = ["Subscription", "CurrentPlanTier"] } }
-      Status          = { Value = { "Fn::GetAtt" = ["Subscription", "Status"] } }
-    }
-  })
-  lifecycle { prevent_destroy = true }
-}
 resource "aws_route53_record" "site" {
   for_each = var.publish_site ? toset(["A", "AAAA"]) : toset([])
   zone_id  = data.aws_route53_zone.parent.zone_id
@@ -188,5 +149,4 @@ resource "aws_route53_record" "site" {
     zone_id                = aws_cloudfront_distribution.site.hosted_zone_id
     evaluate_target_health = false
   }
-  depends_on = [aws_cloudformation_stack.edge_free]
 }

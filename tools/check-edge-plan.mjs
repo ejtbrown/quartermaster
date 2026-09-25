@@ -2,11 +2,17 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   PricingPlanManagerClient,
-  GetSubscriptionCommand,
+  ListSubscriptionsCommand,
 } from '@aws-sdk/client-pricing-plan-manager';
+import {
+  assertStandardEdge,
+  assertNoEdgeSubscription,
+} from './edge-policy.mjs';
 
 const account = process.env.QM_EXPECTED_ACCOUNT_ID;
+const distributionId = process.env.QM_DISTRIBUTION_ID;
 assert.match(account ?? '', /^\d{12}$/);
+assert.match(distributionId ?? '', /^[A-Z0-9]+$/);
 function aws(args) {
   return JSON.parse(
     execFileSync(
@@ -17,45 +23,45 @@ function aws(args) {
   );
 }
 assert.equal(aws(['sts', 'get-caller-identity']).Account, account);
-const stack = aws([
-  'cloudformation',
-  'describe-stacks',
-  '--stack-name',
-  'quartermaster-dev-edge-free',
-]).Stacks[0];
-assert.ok(['CREATE_COMPLETE', 'UPDATE_COMPLETE'].includes(stack.StackStatus));
-const outputs = Object.fromEntries(
-  stack.Outputs.map((o) => [o.OutputKey, o.OutputValue]),
-);
-const parameters = Object.fromEntries(
-  stack.Parameters.map((p) => [p.ParameterKey, p.ParameterValue]),
-);
-const client = new PricingPlanManagerClient({ region: 'us-east-1' });
-const { subscription } = await client.send(
-  new GetSubscriptionCommand({ arn: outputs.SubscriptionArn }),
-);
-assert.equal(subscription.status, 'ACTIVE');
-assert.equal(subscription.planTier, 'FREE');
-assert.equal(subscription.planFamily, 'CloudFront');
+const { Distribution: distribution } = aws([
+  'cloudfront',
+  'get-distribution',
+  '--id',
+  distributionId,
+]);
 assert.equal(
-  subscription.scheduledChange,
-  undefined,
-  'Pending subscription changes need review',
+  distribution.ARN,
+  `arn:aws:cloudfront::${account}:distribution/${distributionId}`,
 );
-assert.deepEqual(
-  [...subscription.resourceArns].sort(),
-  [parameters.DistributionArn, parameters.WebAclArn].sort(),
-);
-assert.ok(
-  parameters.DistributionArn.startsWith(
-    `arn:aws:cloudfront::${account}:distribution/`,
-  ),
-);
-assert.ok(
-  parameters.WebAclArn.startsWith(
-    `arn:aws:wafv2:us-east-1:${account}:global/webacl/quartermaster-dev/`,
-  ),
-);
+const config = distribution.DistributionConfig;
+const prefix = `arn:aws:wafv2:us-east-1:${account}:global/webacl/quartermaster-dev/`;
+assert.ok(config.WebACLId?.startsWith(prefix));
+const { WebACL: webAcl } = aws([
+  'wafv2',
+  'get-web-acl',
+  '--scope',
+  'CLOUDFRONT',
+  '--name',
+  'quartermaster-dev',
+  '--id',
+  config.WebACLId.slice(prefix.length),
+]);
+assertStandardEdge(distribution, webAcl);
+const client = new PricingPlanManagerClient({ region: 'us-east-1' });
+let nextToken;
+const seen = new Set();
+do {
+  const page = await client.send(new ListSubscriptionsCommand({ nextToken }));
+  assertNoEdgeSubscription(page.subscriptionSummaries, [
+    distribution.ARN,
+    webAcl.ARN,
+  ]);
+  nextToken = page.nextToken;
+  if (nextToken) {
+    assert.ok(!seen.has(nextToken), 'Repeated subscription pagination token');
+    seen.add(nextToken);
+  }
+} while (nextToken);
 console.log(
-  'Live FREE subscription is ACTIVE for the exact development distribution and WAF only.',
+  'Standard CloudFront/WAF verified for the exact development resources; no flat-rate association. Publication and origin-denial checks remain separate.',
 );

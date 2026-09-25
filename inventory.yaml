@@ -21,9 +21,10 @@ review_scope:
     - 'Resource entries below describe the complete target; implementation_evidence identifies which subset is actually deployed. Proposed resources must not be treated as live inventory.'
     - "Production domain remains undecided; development/testing uses the default profile's account, with a separate production account created only after church acceptance."
 implementation_evidence:
-  active_milestone: 'GitHub/CodeBuild/CodePipeline implementation prepared; hosting partially provisioned, release blocked by connection authorization and rejected FREE subscription.'
+  active_milestone: '2026-09-24: tiered backups applied; standard CloudFront/WAF source prepared; GitHub AVAILABLE; failed empty Free-plan stack deleted from AWS/Terraform under explicit owner authorization.'
   status: 'data/governance deployed; private health Lambda and disabled hosting provisioned; public application not deployed'
   source: 'docs/IMPLEMENTATION.md'
+  latest_client_decision: '2026-09-25: online-only shared mobile/desktop web accepted; native builds and offline queues deferred; design update only'
   web: 'apps/web: synthetic estate preview, no authentication or persistence'
   core_api: 'services/core-api: built health-only handler, no database calls'
   contracts_and_policy: ['packages/contracts', 'packages/domain']
@@ -36,12 +37,9 @@ implementation_evidence:
       'infra/environments/delivery',
     ]
   delivery_state: 'Separate protected dev/delivery.tfstate; application release roles cannot access this or database state.'
-  delivery_plan: '44 create-only plan applied partially: 42 successful creates, one retained CREATE_FAILED subscription stack, final deploy policy not reached. No deletes or replacements.'
+  delivery_plan: 'September 8: 42 hosting resources created. September 24: failed empty subscription stack deleted with explicit authorization; fresh remaining delivery plan has one comment update and one deploy-policy create, unapplied.'
   delivery_blockers:
-    [
-      'CodeConnections PENDING owner authorization',
-      'AWS rejected FREE eligibility for the new distribution; cause unresolved; no paid substitution',
-    ]
+    ['Create and validate pipeline, release artifacts, and public delivery']
   deployed_foundation_resources:
     [
       'database_vpc',
@@ -56,6 +54,8 @@ implementation_evidence:
   ci: 'Workflow/buildspec/immutable release and rollback scripts plus Terraform projects/pipeline implemented; runner/webhook/pipeline not yet provisioned; all external PR contributors now require approval'
   bootstrap_plan: 'Original five resources plus one GitHub connection applied; protected local bootstrap state, no migration'
   foundation_plan: '23 additions applied; one parameter-only reconciliation update; no destruction; final development plan has no changes'
+  latest_backup_rollout: '2026-09-24: one in-place plan update applied; live 12-hour/seven-day and weekly/90-day rules verified; follow-up foundation plan has no changes; existing recovery points untouched'
+  latest_edge_preflight: '2026-09-24: exact distribution/WAF and absence of subscription association verified; failed empty stack deletion completed; remaining standard-edge delivery changes are unapplied'
   live_checks: '32 control-plane checks pass; read-only Data API query succeeds; first encrypted 90-day backup completed; details in docs/DEPLOYMENT-2026-09-07.md'
   idle_observation: 'CloudWatch ServerlessDatabaseCapacity minimum and maximum 0.0 ACU at 2026-09-07 17:22/17:23/17:24 UTC; writer left idle'
   alert_status: 'configured operator email confirmed; operations publishers/alarms not implemented'
@@ -79,6 +79,18 @@ accepted_product_decisions:
   church_data_controls: 'memberships, permissions, records, exports, lifecycle requests, and scoped support access'
   privacy_and_compliance: 'first-class requirements from the pilot onward'
   physical_work_safety: 'human responsibility; advisory AI reminders; no platform certification of workers or physical procedures'
+accepted_client_decisions:
+  decision_date: '2026-09-25'
+  source: 'docs/decisions/0007-online-only-mobile-web.md'
+  delivery: 'shared responsive web application in apps/web'
+  mobile_capture: 'foreground online browser workflow'
+  offline_support: false
+  native_apps: 'deferred'
+  home_screen_installation: 'optional; no offline capability'
+  durable_local_drafts_or_queues: false
+  deferred_audio: false
+  save_guarantee: 'server acknowledgment required; unsent in-memory input is best-effort only'
+  native_release_required: false
 accepted_infrastructure_decisions:
   decision_date: '2026-09-07'
   source: 'docs/decisions/0002-regions-recovery-and-build-hosts.md'
@@ -99,6 +111,15 @@ accepted_infrastructure_decisions:
   audit_retention_years: 1
   backup_retention_months: 3
   initial_backup_retention_days: 90
+  deletion_metadata_retention: 'backup horizon after deletion; verify no older restore-eligible copy remains before expiry'
+  deletion_metadata_retention_days: 90
+  deletion_metadata_source: 'docs/decisions/0008-deletion-metadata-backup-horizon.md'
+  compliance_holds: 'deferred design question; not required for synthetic preview'
+  recent_snapshot_retention_days: 7
+  recent_snapshot_interval_hours: 12
+  historical_snapshot_interval_days: 7
+  edge_billing: 'standard CloudFront and WAF pay-as-you-go; accepted 2026-09-24'
+  latest_source: 'docs/decisions/0006-tiered-backups-and-standard-edge.md'
   destructive_cleanup_enabled: false
   deletion_policy: 'purge content including resized photos; retain minimal metadata and deletion timestamp; backup-purge semantics pending'
   availability_percent: 99.5
@@ -113,16 +134,16 @@ accepted_infrastructure_decisions:
 local_build_hosts:
   - alias: 'mac-dev'
     lifecycle: existing
-    role: 'iOS build and signing'
+    role: 'optional device/browser testing; native iOS build/signing deferred, not a release dependency'
     evidence: 'SSH reached Darwin; Xcode 26.1.1; Node not on noninteractive SSH command path'
   - alias: 'linux-dev'
     lifecycle: existing
-    role: 'Android build and testing'
+    role: 'optional device/browser testing; native Android build/testing deferred, not a release dependency'
     evidence: 'SSH reached Linux; Java 17 and Node; Android SDK tools not on command path'
   - alias: 'current development host'
-    lifecycle: proposed
-    role: 'on-demand mobile release coordinator; outbound CodePipeline worker and local SSH dispatch'
-    evidence: 'DESIGN.md section 15.3; no coordinator implemented'
+    lifecycle: existing
+    role: 'local development and reviewed infrastructure operations; native release coordinator deferred'
+    evidence: 'No coordinator implemented or required under decision 0007'
 components:
   - name: 'web'
     type: frontend
@@ -133,7 +154,7 @@ components:
       - 'infra/modules/edge'
   - name: 'mobile'
     type: frontend
-    lifecycle: proposed
+    lifecycle: deferred_placeholder
     source_paths:
       - 'apps/mobile'
     deployment_paths: []
@@ -183,7 +204,7 @@ components:
 aws_resources:
   - logical_name: 'edge_distribution'
     service: 'Amazon CloudFront'
-    resource_type: 'distribution with Free flat-rate plan'
+    resource_type: 'standard pay-as-you-go distribution; Free subscription superseded on 2026-09-24'
     lifecycle: proposed
     source_paths:
       - 'DESIGN.md'
@@ -373,7 +394,7 @@ aws_resources:
     always_on_candidate: true
   - logical_name: 'backup_recovery_points'
     service: 'AWS Backup and Amazon RDS'
-    resource_type: 'declared: native seven-day PITR plus AWS Backup 90-day same-region snapshots; proposed: cross-region copies and media recovery'
+    resource_type: 'deployed: native seven-day PITR, AWS Backup 12-hour/seven-day and weekly/90-day same-region snapshots; proposed: cross-region copies and media recovery'
     lifecycle: proposed
     source_paths:
       - 'DESIGN.md'
@@ -425,7 +446,7 @@ data_stores:
     scale_to_zero: 'yes in both environments; every instance has minimum 0 ACU and pauses after five idle minutes; retained bytes and secrets remain billable'
   - name: 'DynamoDB'
     lifecycle: proposed
-    role: 'ephemeral conversation/web-session, idempotency, and synchronization state'
+    role: 'ephemeral conversation/web-session and response caches; durable drafts/commit facts remain relational'
     scale_to_zero: 'request throughput yes; retained bytes remain billable subject to allowances'
   - name: 'S3'
     lifecycle: proposed
@@ -460,10 +481,10 @@ scale_to_zero_regressions_rejected:
   - 'pg_cron or another in-database dependency for required scheduled work'
 missing_context:
   - 'Church acceptance before production bootstrap; future production account ID, roles, and bootstrap resources (separate-account topology is accepted Q-032)'
-  - 'CloudFront flat-rate-plan eligibility for each selected account (accounts using AWS Free Tier are ineligible)'
+  - 'Completed exact-commit CodeBuild/CodePipeline release and public HTTPS/origin-denial evidence'
   - 'User, asset, image, request, and AI-session volumes for the confirmed one-church pilot; future tenant growth'
   - 'Measured restore performance against accepted 24-hour RTO; backup economics and completion age for preferred 24-hour RPO'
   - 'Data-retention, residency, insurance, accounting, and privacy requirements'
   - 'Final production domain'
   - 'Existing GitHub organization controls and AWS account bootstrap resources'
-  - 'Signing identities, Apple/Google credentials, and pinned toolchain readiness on mac-dev and linux-dev'
+  - 'Real iPhone Safari/Android Chrome capture tests and supported browser floor; native signing/store setup is deferred'

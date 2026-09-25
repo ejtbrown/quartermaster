@@ -23,7 +23,7 @@ variable "enable_pipeline" {
 variable "publish_site" {
   type        = bool
   default     = false
-  description = "Enable only after the associated CloudFront FREE subscription is verified ACTIVE."
+  description = "Enable after standard CloudFront/WAF and private-origin checks pass; preview only."
 }
 
 locals {
@@ -68,7 +68,7 @@ data "aws_route53_zone" "parent" {
 output "website_url" { value = "https://${local.domain}" }
 output "distribution_id" { value = aws_cloudfront_distribution.site.id }
 output "distribution_domain" { value = aws_cloudfront_distribution.site.domain_name }
-output "free_plan_stack" { value = aws_cloudformation_stack.edge_free.name }
+output "edge_billing" { value = "Standard CloudFront and WAF pay-as-you-go" }
 output "web_bucket" { value = aws_s3_bucket.delivery["web"].id }
 output "api_function" { value = aws_lambda_function.api.function_name }
 output "api_origin_url" { value = aws_lambda_function_url.api.function_url }

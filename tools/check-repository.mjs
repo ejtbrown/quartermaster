@@ -12,6 +12,16 @@ assert.equal(settings.development_monthly_budget_usd, 100);
 assert.equal(settings.development_domain, 'qm.ejtbrown.com');
 assert.equal(settings.originals_retention_days, 15);
 assert.equal(settings.rto_hours, 24);
+assert.equal(
+  settings.deletion_metadata_retention_days,
+  settings.initial_backup_retention_days,
+);
+const client = inventory.toJS().accepted_client_decisions;
+assert.equal(client.offline_support, false);
+assert.equal(client.durable_local_drafts_or_queues, false);
+assert.equal(client.deferred_audio, false);
+assert.equal(client.native_release_required, false);
+assert.equal(client.native_apps, 'deferred');
 const tasks = JSON.parse(readFileSync('codex_plan.json', 'utf8'));
 const keys = [
   'id',

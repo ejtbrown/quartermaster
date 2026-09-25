@@ -38,6 +38,61 @@ const database = {
   ],
 };
 
+const backupRules = [
+  {
+    rule_name: 'database-every-12-hours',
+    schedule: 'cron(0 0/12 * * ? *)',
+    lifecycle: [{ delete_after: 7 }],
+  },
+  {
+    rule_name: 'database-weekly-90-days',
+    schedule: 'cron(0 0 ? * SUN *)',
+    lifecycle: [{ delete_after: 90 }],
+  },
+].map((rule) => ({
+  ...rule,
+  target_vault_name: 'quartermaster-dev-database',
+  schedule_expression_timezone: 'Etc/UTC',
+  start_window: 60,
+  completion_window: 180,
+  enable_continuous_backup: false,
+}));
+
+it('accepts frequent recent backups and weekly historical backups', () => {
+  expect(inspectPlan(plan('aws_backup_plan', { rule: backupRules }))).toEqual(
+    [],
+  );
+});
+it('rejects missing, duplicate or incorrectly retained backup tiers', () => {
+  for (const rules of [
+    backupRules.slice(0, 1),
+    [backupRules[0], backupRules[0]],
+    backupRules.map((rule) => ({ ...rule, lifecycle: [{ delete_after: 90 }] })),
+  ]) {
+    expect(
+      inspectPlan(plan('aws_backup_plan', { rule: rules })).join(),
+    ).toContain('12-hour/seven-day');
+  }
+});
+it('rejects forgetting state, including the abandoned edge stack', () => {
+  const retained = {
+    resource_changes: [
+      {
+        address: 'aws_cloudformation_stack.edge_free',
+        type: 'aws_cloudformation_stack',
+        change: {
+          actions: ['forget'],
+          before: { name: 'quartermaster-dev-edge-free' },
+          after: null,
+        },
+      },
+    ],
+  };
+  expect(inspectPlan(retained).join()).toContain('separately reviewed');
+  retained.resource_changes[0]!.address = 'aws_cloudformation_stack.unrelated';
+  expect(inspectPlan(retained).join()).toContain('separately reviewed');
+});
+
 it('accepts the private zero-minimum database contract', () =>
   expect(inspectPlan(plan('aws_rds_cluster', database))).toEqual([]));
 it.each([
@@ -156,7 +211,7 @@ it('rejects a paid or opaque CloudFormation subscription', () => {
     ).toBeGreaterThan(0);
   }
 });
-it('accepts only the narrow FREE subscription bridge', () =>
+it('rejects recreating the abandoned FREE subscription bridge', () =>
   expect(
     inspectPlan(
       plan('aws_cloudformation_stack', {
@@ -171,7 +226,7 @@ it('accepts only the narrow FREE subscription bridge', () =>
         }),
       }),
     ),
-  ).toEqual([]));
+  ).not.toEqual([]));
 it('rejects privileged CI and unbounded compute', () =>
   expect(
     inspectPlan(

@@ -79,6 +79,20 @@ resource "aws_backup_plan" "database" {
     start_window                 = 60
     completion_window            = 180
     enable_continuous_backup     = false
+    lifecycle { delete_after = 7 }
+    recovery_point_tags = local.tags
+  }
+  # The Sunday midnight window overlaps the recent rule. AWS Backup retains
+  # that recovery point for the longer period instead of taking a duplicate.
+  # Retention is from creation, not 90 additional days after the first week.
+  rule {
+    rule_name                    = "database-weekly-90-days"
+    target_vault_name            = aws_backup_vault.database.name
+    schedule                     = "cron(0 0 ? * SUN *)"
+    schedule_expression_timezone = "Etc/UTC"
+    start_window                 = 60
+    completion_window            = 180
+    enable_continuous_backup     = false
     lifecycle { delete_after = 90 }
     recovery_point_tags = local.tags
   }

@@ -1,12 +1,18 @@
 # Quartermaster end-to-end design
 
-Status: target architecture; development data/governance foundation deployed and checked in Ohio, application integrations still pending. Q-001 through Q-009 and Q-031/Q-032 accepted; budget/domain/retention constraints extend Q-010/Q-012/Q-014. See docs/DEPLOYMENT-2026-09-07.md for exact scope and remaining gates.
+Status: target architecture; development data/governance foundation deployed and checked in Ohio, application integrations still pending. Q-001 through Q-009, Q-013 and Q-031/Q-032 accepted; subsequent decisions amend client, budget, domain, retention and edge assumptions. See docs/IMPLEMENTATION.md for current scope and remaining gates.
 
-Date: 2026-09-07
+Date: 2026-09-25 (living design; deployment evidence is dated separately)
 
 Audience: product, design, engineering, security, operations, and finance
 
 Decision owner: Erick Brown
+
+Latest retention revision (2026-09-25): [decision 0008](docs/decisions/0008-deletion-metadata-backup-horizon.md) retains content-free deletion metadata for the backup horizon, currently 90 days after deletion. Before marker expiry, verify no restore-eligible pre-deletion copy remains. Compliance holds are deferred; deletion of content inside retained backups remains a separate real-data question. Neither blocks the authorized synthetic development deployment.
+
+Latest product revision (2026-09-25): [decision 0007](docs/decisions/0007-online-only-mobile-web.md) accepts an online-only mobile web experience in the same React application as the desktop estate UI. Native applications, durable offline storage/queues, deferred audio, and background synchronization are outside the first release. Q-013 is closed; native build/signing is no longer a launch dependency. Ordinary request retries, server-saved drafts, and honest save status remain required.
+
+Latest accepted revision (2026-09-24): [decision 0006](docs/decisions/0006-tiered-backups-and-standard-edge.md) supersedes earlier development Free-plan and frequent/90-day snapshot assumptions. Development uses standard CloudFront + WAF (about $6/month fixed WAF baseline plus usage), seven-day PITR, 12-hour snapshots retained seven days, and weekly snapshots retained 90 days from creation. Existing recovery points retain their original expiry. Application compute remains scale-to-zero; no public application release or real-data readiness is implied by this decision.
 
 ## 1. Executive summary
 
@@ -21,11 +27,11 @@ The design deliberately separates judgment from transcription:
 - Deterministic application code validates permissions, field types, business rules, dates, units, and state transitions.
 - AI output remains a proposal with confidence and provenance until policy says it can be accepted or a human confirms it.
 
-The proposed AWS platform is a cost-conscious serverless architecture. A React web application and two small API Lambdas sit behind CloudFront. Aurora PostgreSQL Serverless v2 is the relational system of record and reporting engine. S3 stores original and derived media. DynamoDB holds short-lived conversation and synchronization state. SQS and Lambda decouple image processing. Cognito handles identity, and Amazon Bedrock plus Amazon Transcribe provide multimodal and speech capabilities. There are no NAT gateways, load balancers, container clusters, provisioned model endpoints, caches, or search clusters at launch.
+The proposed AWS platform is a cost-conscious serverless architecture. One responsive React application serves mobile capture and desktop estate views behind CloudFront, alongside two small API Lambdas. Aurora PostgreSQL Serverless v2 is the relational system of record and reporting engine. S3 stores original and derived media. DynamoDB holds short-lived conversation and web-session state. SQS and Lambda decouple image processing. Cognito handles identity, and Amazon Bedrock plus Amazon Transcribe provide multimodal and speech capabilities. There are no NAT gateways, load balancers, container clusters, provisioned model endpoints, caches, or search clusters at launch.
 
-Both production and development are designed to reach zero application compute during idle periods. Aurora Serverless v2 uses `min_capacity=0` with a five-minute auto-pause, CloudFront starts on the $0 Free flat-rate plan, and every runtime/worker is request- or event-driven. The illustrative retained database/secret cost is $1.40/month for development alone; the two-environment reference is $2.80/month after assumed account allowances, before media, backup copies, shared fees, and activity. See `cost_model.md` for quantities and pricing dates; account allowances are not guaranteed. “Scale-to-zero” means zero continuously billed application compute, network, and edge capacity, not a zero AWS bill. A database wake normally takes about 15 seconds and can take 30 seconds or longer after deep sleep, so cold activation is an explicit product state with a longer SLO, progress feedback, bounded retry, and idempotent mutations.
+Both production and development are designed to reach zero application compute during idle periods. Aurora Serverless v2 uses `min_capacity=0` with a five-minute auto-pause, and every runtime/worker is request- or event-driven. Standard CloudFront and WAF replace the original Free-plan assumption under decision 0006. Retained data, credentials, WAF, and activity remain billable; see the current decision section in `cost_model.md` for quantities, exclusions, and pricing dates. “Scale-to-zero” means zero continuously billed application compute, not a zero AWS bill. A database wake normally takes about 15 seconds and can take 30 seconds or longer after deep sleep, so cold activation is an explicit product state with a longer SLO, progress feedback, bounded retry, and idempotent mutations.
 
-The immediate AWS region is `us-east-2` (Ohio); `us-east-1` and `us-west-2` are approved alternatives when needed. Local development/testing uses the account reached by the `default` AWS profile. Terraform and consistent tags must support a later account move. The repository is public; CodeBuild runs shared GitHub Actions checks, CodePipeline orchestrates cloud deployments, `mac-dev` builds/signs iOS, and `linux-dev` builds/tests Android. The accepted availability target is 99.5% with a 60-second cold-start allowance. Recovery should preferably lose at most one day of server-acknowledged data; up to seven days is tolerated if a shorter recovery point would be disproportionately expensive.
+The immediate AWS region is `us-east-2` (Ohio); `us-east-1` and `us-west-2` are approved alternatives when needed. Local development/testing uses the account reached by the `default` AWS profile. Terraform and consistent tags must support a later account move. The repository is public; CodeBuild runs shared GitHub Actions checks and CodePipeline orchestrates cloud deployments of the shared web client and APIs. Native builds/signing on `mac-dev` and `linux-dev` are deferred, not release dependencies. The accepted availability target is 99.5% with a 60-second cold-start allowance. Recovery should preferably lose at most one day of server-acknowledged data; up to seven days is tolerated if a shorter recovery point would be disproportionately expensive.
 
 ## 2. Product boundaries
 
@@ -36,7 +42,7 @@ The immediate AWS region is `us-east-2` (Ohio); `us-east-1` and `us-west-2` are 
 3. Support the full asset lifecycle from discovery through maintenance, incidents, valuation, and disposal.
 4. Make the entire estate understandable through exact search, faceting, reports, calculations, exports, and safe natural-language queries.
 5. Serve multiple independent organizations with strong tenant isolation.
-6. Continue useful field work through intermittent connectivity and synchronize safely later.
+6. Provide clear online capture and save status, with safe foreground retries and no offline durability promise.
 7. Scale from a pilot to many organizations without re-platforming or paying large idle infrastructure charges.
 8. Give an organization a complete, portable export of its structured data and media.
 9. Make privacy, tenant control, and compliance part of every feature's data lifecycle and acceptance criteria, including the single-tenant pilot.
@@ -48,6 +54,7 @@ The immediate AWS region is `us-east-2` (Ohio); `us-east-1` and `us-west-2` are 
 - Autonomous physical or financially material actions.
 - Arbitrary AI-generated SQL, code execution, or unrestricted agents.
 - Live video analysis, continuous background listening, or always-on wake words.
+- Native iOS/Android applications, app-store distribution, offline asset viewing/capture, durable local drafts/media/audio, and background synchronization.
 - Dedicated infrastructure per tenant by default.
 - OpenSearch, a vector database, or a data warehouse before PostgreSQL search/reporting is proven inadequate.
 
@@ -55,7 +62,7 @@ The immediate AWS region is `us-east-2` (Ohio); `us-east-1` and `us-west-2` are 
 
 - Voice first, never voice only. Every action must also be visible and operable by touch or keyboard.
 - Confirm uncertainty, not everything. Confidence thresholds and policy determine when to ask.
-- Capture now, enrich later. Poor connectivity must not destroy field progress.
+- Save status is truthful. Acknowledged server drafts can be resumed online; unsent input is not durable and must never be labeled saved.
 - Evidence is immutable; interpretations are versioned.
 - Safety outranks checklist completion.
 - Humans decide whether and how to perform physical work; AI safety reminders are advisory and do not certify a person, procedure, or work site.
@@ -96,7 +103,7 @@ Dedicated databases or accounts per tenant remain a later option for contractual
 ### 3.3 Service ownership and church data controls
 
 - Erick Brown is the current service owner, designated data controller, and support operator. If the venture proves viable, he intends to form an LLC and transfer the service to it; incorporation is not a prerequisite for the pilot.
-- Each church administers its own memberships, permissions, asset records, exports, support-access grants, and data-lifecycle settings within the service's supported policies. Accepted retention is 15 days for originals/transcripts, one year for audits, and three months for backups. Derivative-photo, backup-purge, metadata-duration, exceptional-hold, and privacy-notice details remain part of Q-014 and related decisions.
+- Each church administers its own memberships, permissions, asset records, exports, support-access grants, and data-lifecycle settings within the service's supported policies. Accepted retention is 15 days for originals/transcripts, one year for audits, and three months for backups. Resized photos persist until photo/asset/tenant deletion; deletion metadata follows the backup horizon, currently 90 days after deletion. Backup-content purge remains unresolved, compliance holds are deferred, and privacy notices must describe the implemented behavior.
 - Erick's support role uses the same tenant-approved, time-limited, audited access mechanism as any later support staff. Administrative recovery access is separately restricted and audited. Operating the service does not grant ordinary support sessions blanket access to church records.
 - Privacy documentation will describe the purposes and parties involved in each processing activity, including church-directed processing and service account/support processing. The designated service contact does not replace the need to document each church's control and the applicable controller/processor roles for that activity.
 - Service-operator identity, privacy/support contacts, and notice/terms versions are configurable. A future LLC transfer updates those records, account and contract ownership, and required customer notices; it preserves tenant IDs, permissions, evidence, and the historical identity of Erick as the actor on prior audit events.
@@ -109,9 +116,9 @@ Asset classes use a common asset record plus versioned type schemas, capture che
 
 ## 4. Experience design
 
-### 4.1 Mobile application
+### 4.1 Mobile web experience
 
-The mobile application is a React Native application for iOS and Android. It is optimized for one-handed use, gloves, bright environments, noisy mechanical rooms, roofs, and intermittent connectivity.
+The mobile experience is part of the responsive React application in `apps/web`, optimized for field use on iPhone and Android browsers. It requires connectivity and foreground interaction. Optional Home Screen installation is a convenience, not an offline capability or prerequisite. Real-device tests establish the supported browser/version matrix.
 
 Primary navigation:
 
@@ -119,38 +126,38 @@ Primary navigation:
 - Capture: add, identify, move, update, retire, or assess an asset.
 - Nearby/recent: resume the last asset or draft quickly.
 - Search: barcode/QR scan, identifiers, names, location, and recent results.
-- Sync: visible queue, retry state, conflicts, and storage usage.
+- Save status: visible unsaved input, server-saved draft, upload/processing progress, and committed record states.
 
 Interaction requirements:
 
 - A prominent push-to-talk control is the default. An explicit hands-free session can use voice activity detection, but never starts in the background.
 - Live partial transcript remains visible and editable.
-- The assistant speaks through platform-native text-to-speech initially; all prompts also appear as text.
+- Browser speech synthesis is the initial engineering choice, subject to device quality and privacy validation; all prompts also appear as text. Do not assume every browser voice processes text on-device.
 - Speech is interruptible. Touching a control or beginning to speak stops playback.
-- When camera capture is requested, the app shows the requested view (for example `nameplate`), a short example/overlay, flash control, and a touch fallback. OS camera permission and capture always remain user-controlled.
+- When camera capture is requested, the web app shows the requested view (for example `nameplate`), guidance/overlay where supported, and a camera/file-picker fallback. Browser/OS permission and capture remain user-controlled; torch, focus, and lens controls are capability-dependent.
 - A persistent summary chip shows what will be created: asset, media count, notes, readings, and maintenance items.
 - The user can say or tap “show me what you have,” “go back,” “skip,” “save draft,” or “cancel.”
 - Before commit, the app presents a concise review with uncertain values highlighted.
-- If a data request must wake the database, the app keeps the local draft usable, displays “Starting Quartermaster,” and retries safely without asking the user to repeat a captured observation.
+- If a data request must wake the database, keep current-tab input in memory, display “Starting Quartermaster,” and retry safely with the same idempotency key. Do not label input saved before acknowledgment or promise survival of tab termination.
 - Accessibility supports screen readers, large type, high contrast, captions, external keyboards, switch controls, and haptics independent of color.
 
-### 4.2 Offline behavior
+### 4.2 Connectivity and save guarantees — online-only
 
-Asset viewing and field capture must remain useful offline:
+Offline support is explicitly excluded by decision 0007:
 
-1. The app caches assigned work, relevant locations, asset-type templates, and recently viewed assets.
-2. Drafts, operations, and media are written locally before any upload is attempted.
-3. Every mutation receives a client-generated UUID and idempotency key.
-4. When online, operations synchronize in dependency order; media upload uses resumable multipart upload for large files.
-5. AI interpretation is unavailable offline in v1. The app records audio only if the user explicitly chooses deferred transcription; otherwise it falls back to typing and structured controls.
-6. Conflicting edits do not silently overwrite. Non-overlapping field changes merge; overlapping values appear in a side-by-side resolution screen with actor and timestamp.
-7. Local records are removed only after the server acknowledges the operation and retention policy permits cleanup.
+1. Login, asset viewing/editing, capture, uploads, and AI require a live connection. Show service/connection failure, pause capture/voice, and offer retry; do not queue offline work.
+2. Current-tab unsent input may remain in memory on a best-effort basis. Reload, tab termination, or device restart may lose it. No local asset database, durable draft/media/audio queue, or offline-serving service worker is required or authorized by this design.
+3. Public versioned JavaScript/CSS may use normal HTTP caching. Authenticated API responses and tenant content are not persisted to browser application caches. Device photo-library copies selected by the user are outside Quartermaster's storage guarantees.
+4. “Saved draft” requires durable server acknowledgment; “asset saved” requires the final transaction to commit. Upload completion and background processing have separate visible states. Durable drafts belong in the recovery-protected store, not solely ephemeral conversation state.
+5. Foreground retries reuse the same operation/idempotency key. A lost response is reconciled with server state before creating another record; upload completion is verified. Bounded upload retries are not an offline synchronization engine.
+6. Optimistic versions reject stale updates. Show the current server values and let the user resolve conflicting changes; never silently overwrite another user's edit.
+7. Camera/microphone permission denial, interruption, and session expiry have explicit recovery paths and manual controls. Manual entry still requires connectivity. No deferred raw audio is retained for later transcription.
 
-The local database and queued media use OS data protection. Full SQLCipher encryption and mobile-device-management requirements are an unresolved security decision.
+Server-side idempotency, queues/outbox, backups, and recovery remain required. Removing offline client complexity does not remove server durability or concurrent-edit controls. Browser support, permissions, and interruption tests are release gates; unsent-draft survival across process death is not.
 
 ### 4.3 Web application
 
-The web application is a responsive React single-page application. It optimizes for comprehension rather than field entry.
+The same responsive React application presents a desktop estate workspace optimized for comprehension, alongside the mobile field-capture experience. Both use the same authorization, contracts, and server records.
 
 Core views:
 
@@ -176,7 +183,7 @@ The air-conditioner example executes as follows:
 2. The workflow engine selects the current `air_conditioner` capture template and creates a server-side draft.
 3. Deterministic policy finds that location is required and the assistant asks for it.
 4. “On the roof, northwest corner of the main building” is parsed into a proposed existing building, area description, and placement. Ambiguous location matches produce a choice.
-5. The assistant requests a `nameplate` image. The mobile app captures an original locally, obtains an upload grant, uploads directly to S3, and completes the media record.
+5. The assistant requests a `nameplate` image. The mobile web app captures/selects a photo, obtains an authorized upload grant, uploads directly to S3 while connected, and verifies completion of the media record. No durable local queue is created.
 6. S3 sends a work item through SQS. A media worker verifies/decode-tests the image, creates display variants, and invokes the approved multimodal model with the capture intent and asset-type schema.
 7. The result is validated against a strict response schema and saved as observations such as manufacturer, model, serial number, candidate image kind, confidence, bounding region, model ID, prompt version, and media ID.
 8. The conversation controller compares confidence and normalization rules, then asks the user to confirm the extracted values. The example misspelling “Traine” would be normalized only as a suggestion; the captured pixels and raw extraction remain preserved.
@@ -214,7 +221,7 @@ If any final write fails, the draft stays resumable and the idempotency key make
 - Pre-incident asset snapshot and post-incident assessment.
 - Damage state, operability, repair/replacement estimate, photos, notes, and external claim/reference numbers.
 - Claim/evidence package export with checksums and manifest.
-- Bulk field assessment optimized for limited connectivity.
+- Bulk field assessment with bounded payloads while connected; offline disaster-site capture is not included in v1.
 
 ### 6.4 Accounting
 
@@ -230,8 +237,8 @@ Accounting and insurance value are separate effective-dated concepts. Neither si
 
 ```mermaid
 flowchart LR
-    Mobile[React Native mobile\nlocal encrypted queue] --> CF[CloudFront\nWAF + TLS + routing]
-    Web[React web SPA] --> CF
+    Mobile[Mobile web\nonline foreground capture] --> CF[CloudFront\nWAF + TLS + routing]
+    Web[Desktop estate workspace\nsame React web application] --> CF
     CF -->|static| WebS3[(Private S3 web bucket)]
     CF -->|/api/*, signed origin| Core[Core API Lambda]
     CF -->|/api/ai/*, signed origin| Agent[Conversation API Lambda]
@@ -262,7 +269,7 @@ flowchart LR
 | Unit | Responsibility | Scaling/cost behavior |
 |---|---|---|
 | Web SPA | Estate UI and Cognito OAuth flow | Static S3/CloudFront; no compute floor |
-| Core API Lambda | REST routing, authz, validation, assets, search, reports, uploads, sync | On-demand arm64; modular monolith |
+| Core API Lambda | REST routing, authz, validation, assets, drafts, search, reports, uploads | On-demand arm64; modular monolith |
 | Conversation API Lambda | Session turns, tools, AI routing, streamed text response | On-demand arm64; separate concurrency/budget |
 | Media worker Lambda | Validation, variants, image classification/extraction | SQS-driven; bounded concurrency; idempotent |
 | Rule worker Lambda | Scheduled rule evaluation and outbox delivery | Event-driven; batches by tenant |
@@ -274,9 +281,9 @@ The modular monolith avoids a microservice tax while keeping AI, media, and expo
 
 - One CloudFront distribution per environment routes static content and APIs under one origin, avoiding CORS complexity.
 - S3 and Lambda Function URL origins are private to CloudFront through Origin Access Control (OAC).
-- Lambda Function URLs use `AWS_IAM`; CloudFront signs origin requests. Mobile Cognito JWTs use a dedicated viewer-token header that CloudFront forwards separately from the origin SigV4 `Authorization` header. Application middleware validates the JWT and never trusts the edge signature as user identity.
+- Lambda Function URLs use `AWS_IAM`; CloudFront signs origin requests. The shared web client uses the backend-for-frontend session cookie described in section 12.1. Application middleware resolves authenticated sessions and capabilities and never trusts the edge signature as user identity. API session cookies are forwarded only to the API origin; authenticated responses are not cached.
 - API paths disable caching unless an endpoint has an explicit tenant-safe cache key. Hashed static assets cache for one year; `index.html` uses short revalidation.
-- Both environments initially use the CloudFront Free flat-rate plan at $0/month. It includes the documented request/transfer allowance, WAF, DDoS protection, and security dashboard, but neither standard CloudFront access logs nor WAF request logs. Lambda origin-request logs, application audit logs, CloudTrail, security-dashboard visibility, and origin metrics remain required. Production upgrades to Pro, Business, or pay-as-you-go only when measured traffic or an approved logging/SLA/security requirement justifies a fixed or usage-based edge charge. Flat-rate plans are unavailable to accounts using AWS Free Tier, so workload-account eligibility is a deployment gate; if an account is ineligible, stop and price the pay-as-you-go CloudFront/WAF/DNS alternative rather than silently changing the security posture.
+- Standard pay-as-you-go CloudFront and WAF are accepted under decision 0006; no Free subscription or eligibility gate remains. Preserve private origins and WAF rate limiting. Review request-log retention, privacy, and cost before enabling additional logging; application audit, CloudTrail, and operational monitoring remain separate requirements.
 - CloudFront/WAF applies body-size, rate, managed threat, and bot policies. Application-level per-tenant and per-user quotas remain necessary.
 
 If Function URL/OAC or flat-rate-plan constraints prevent a required API feature, the fallback is API Gateway HTTP API. Do not introduce a public ALB.
@@ -299,7 +306,7 @@ DynamoDB is restricted to records that benefit from pay-per-request access and T
 
 - active conversation/draft state;
 - opaque web sessions and encrypted-at-rest token state with TTL;
-- idempotency responses and short sync cursors;
+- short-lived idempotency response caches, backed by durable relational commit facts;
 - short-lived rate/cost counters;
 - optional device registrations.
 
@@ -317,7 +324,7 @@ Do not store base64 images, unbounded transcripts, or arbitrary blobs in Postgre
 - Production and development each use one Aurora Serverless v2 writer with `min_capacity=0`; production `max_capacity=8`, development `max_capacity=4`, and both use the minimum supported 300-second auto-pause timeout.
 - Terraform pins an explicitly available Aurora PostgreSQL engine version in each approved region; PostgreSQL 16.3 is the current documented minimum for auto-pause on the 16.x branch. CI queries regional availability and rejects a version that cannot use 0 ACUs rather than falling back to 0.5.
 - A first Data API request naturally resumes a paused writer. Clients allow 60 seconds for activation, show progress after two seconds, and make at most three bounded jittered attempts for classified resume/transient failures. Mutation retries reuse the same idempotency key.
-- The static web shell, Cognito sign-in, mobile cache, and local drafts remain usable while the database starts. Cached estate data is clearly marked with its last-sync time. There is no login warm-up, synthetic health query, scheduled keepalive, or traffic whose purpose is to prevent pause.
+- The static web shell and identity-provider interaction do not need database compute; application membership resolution and data requests may wait for activation. Preserve current-tab input in memory and show loading/save status while connected. There is no offline estate cache, login warm-up, synthetic health query, scheduled keepalive, or traffic whose purpose is to prevent pause.
 - Database-backed scheduled work uses EventBridge Scheduler and the Data API, which resumes the writer when work is actually due. Do not use `pg_cron`: jobs scheduled inside Aurora are skipped while the cluster is paused.
 - Outbox delivery never polls the database. Before a domain commit, the API places a delayed SQS trigger containing a deterministic outbox batch ID; only after SQS accepts it does the database transaction commit the mutation and outbox rows with that ID. The worker later fetches that exact batch. A trigger whose transaction failed is a harmless no-op; duplicate triggers and deliveries are idempotent. Thus every committed batch already has a durable wake signal without an idle poller.
 - Time-based rules use one-time schedules created or updated when actual future work is recorded. Do not run empty minute/hour/day database scans merely to discover that nothing is due; explicitly enabled periodic accounting/reporting work counts as real activity and is batched by tenant and due time.
@@ -378,11 +385,11 @@ The model must distinguish “this is not the requested view” from “I cannot
 
 ### 8.4 Speech
 
-- The mobile app captures short utterances and uses Amazon Transcribe Streaming through a server-issued, short-lived signed connection.
+- The mobile web app captures short foreground utterances and uses Amazon Transcribe Streaming through a server-issued, short-lived signed connection. Loss of service connectivity stops capture; there is no deferred offline audio queue.
 - The server enforces per-user concurrent stream limits, maximum session/utterance duration, and monthly tenant budgets before issuing a stream.
 - Partial transcripts are local UI only. Final transcripts are sent as turns.
-- Platform-native TTS speaks assistant text at launch, reducing latency, bandwidth, and cloud cost. Optional Amazon Polly or Nova Sonic can be evaluated for voice consistency/accessibility.
-- Raw audio is not stored by default. If deferred transcription or troubleshooting recording is enabled, it requires explicit notice, a retention policy, and separate authorization.
+- Browser speech synthesis is the initial engineering default for assistant text, subject to real-device quality, interruption, and privacy checks. Do not assume voices are always processed locally. Optional approved cloud speech can be evaluated if browser voices fail the acceptance criteria; text remains available.
+- Raw audio is not stored by default. Troubleshooting recording would require separate authorization, explicit notice and a retention policy. Deferred offline transcription is outside v1 scope.
 - Organization-specific manufacturer/model vocabulary is supplied to transcription where supported, but it cannot replace user confirmation of identifiers.
 
 Full-duplex Nova Sonic is a future experiment. It would require a secure long-lived bidirectional bridge or tightly scoped direct client access and must beat the turn-based design on field latency, interruption behavior, cost, safety, and abuse resistance.
@@ -512,8 +519,9 @@ POST   /api/v1/reports/run
 POST   /api/v1/media/uploads
 POST   /api/v1/media/{media_id}/complete
 GET    /api/v1/media/{media_id}/status
-POST   /api/v1/sync/push
-GET    /api/v1/sync/pull?cursor=...
+POST   /api/v1/drafts
+GET    /api/v1/drafts/{draft_id}
+PATCH  /api/v1/drafts/{draft_id}
 POST   /api/v1/ai/sessions
 POST   /api/v1/ai/sessions/{session_id}/turns
 POST   /api/v1/ai/sessions/{session_id}/commit
@@ -571,10 +579,10 @@ Time-based evaluation uses one-time EventBridge Scheduler entries created or upd
 
 ### 12.1 Identity and sessions
 
-- Cognito Authorization Code + PKCE for web/mobile; no implicit flow.
+- Cognito Authorization Code + PKCE for the shared mobile/desktop web client; no implicit flow.
 - Short access tokens and refresh-token rotation/revocation where supported by the selected tier/client.
 - MFA is required for owners/admins and strongly encouraged for others; SMS is a recovery fallback, not the preferred factor.
-- Mobile credentials/tokens use the OS keychain/keystore and a dedicated viewer-token header; the OAC uses the standard origin `Authorization` header for its own SigV4 signature.
+- The OAC uses the origin `Authorization` header for its SigV4 signature, not end-user authentication. Native keychain/keystore clients are outside the release scope.
 - Web uses a backend-for-frontend session: the core API completes the authorization-code flow, keeps refresh/session state server-side with TTL, and sets only an opaque `Secure`, `HttpOnly`, `SameSite` session cookie. State-changing browser requests use CSRF protection. Do not put long-lived tokens in `localStorage`, browser-readable cookies, URLs, or logs.
 - Reauthentication is required for export, member/role change, disposal, tenant policy, and support-access approval.
 
@@ -643,7 +651,7 @@ Erick accepted 99.5% availability, a 60-second cold-start allowance, the data-lo
 | Maximum accepted data-loss window | 7 days; tolerance for a cost-driven fallback, not the normal backup cadence |
 | Same-region finer recovery | Use Aurora's native PITR when available; no separate 5-minute contractual target |
 | Region-loss RTO | At most 24 hours; accepted in Q-031 |
-| Offline draft durability | Survives app restart/device reboot until acknowledged or user deletes |
+| Client save guarantee | Online-only; saved status requires server acknowledgment; unsent input has no restart/offline durability guarantee |
 
 ### 13.2 Availability design
 
@@ -652,7 +660,7 @@ Erick accepted 99.5% availability, a 60-second cold-start allowance, the data-lo
 - Data API timeouts and user-visible state accommodate resume behavior. Calls use at most three bounded jittered attempts for classified retryable errors, and mutations remain idempotent across attempts.
 - SQS visibility timeout exceeds worker timeout; DLQs alarm on first message; all consumers are idempotent.
 - Lambda reserved concurrency protects database/model dependencies and guarantees a small core API allocation. AI overload sheds AI work without making CRUD unavailable.
-- Mobile drafts survive service outages and can be committed later.
+- Durable server-saved drafts can be resumed online after service recovery, subject to the accepted RPO. Unsent browser input has no outage/restart durability guarantee.
 - Exports and large reports are asynchronous and do not consume interactive concurrency indefinitely.
 
 If 99.9% or rapid AZ failover is required, test a zero-minimum Serverless v2 reader in another AZ with failover priority 0 or 1. It can pause with the writer, preserving the idle compute floor, but increases active compute and changes resume/failover behavior.
@@ -662,13 +670,13 @@ If 99.9% or rapid AZ failover is required, test a zero-minimum Serverless v2 rea
 - The default is backup-and-restore recovery with no continuously running standby database. Use `us-west-2` as the proposed secondary backup location within the approved set; `us-east-1` is a configurable alternative. Regional permission does not itself enable copies or deploy a second application stack.
 - Backups are retained for three months (initial operational convention: 90 days). Keep seven days of native Aurora PITR and retained snapshots/copies for the longer period; Aurora PITR cannot itself cover three months. Native snapshot creation does not wake an auto-paused instance. A 12-hour schedule provides margin for copy completion while targeting a newest completed recovery point no older than 24 hours. The longer retention does not change the preferred RPO or accepted RTO. Confirm purge behavior inside backups before enabling destructive cleanup.
 - Retained S3 media, audit/export evidence, and the metadata necessary to locate them need recovery copies too. Copy newly accepted objects asynchronously to the backup region and retry failures under the approved retention/deletion policy. Resized photos require their own recovery copies: they cannot be regenerated after 15-day originals expire. Verify that a database recovery point's referenced media versions are present before treating that point as complete. S3/queue workers are event-driven and add no idle compute floor; replication is not a substitute for versioned retention against accidental deletion. Backup-purge semantics remain a release gate.
-- DynamoDB conversation/session state is reconstructible or expires. Preserve local mobile drafts until server acknowledgment, retain durable commit/idempotency facts in Aurora, and do not buy cross-region live session replication. Any DynamoDB item required to recover acknowledged work must be added to the durable recovery set before release; otherwise restore starts with new sessions/cursors and safe idempotent resynchronization.
+- DynamoDB conversation/session state is reconstructible or expires. Keep acknowledged durable drafts and commit/idempotency facts in Aurora; do not buy cross-region live session replication. Any DynamoDB item required to recover acknowledged work must be added to the durable recovery set before release; otherwise restore starts with new sessions and reloads durable server state. No offline client queue must be reconciled.
 - Terraform state, immutable release artifacts, operator configuration, and secret re-establishment procedures are part of recovery. Protect state/version history and account-specific access outside the public repository; never publish secrets or Terraform state as part of repository portability.
 - Monitor the age of the latest completed, internally consistent recovery point. Alert on any failed job and when age exceeds 24 hours, retry and notify Erick, and escalate well before seven days. A proposed reduction to weekly backups must show its cost savings and data-loss consequences; the accepted seven-day tolerance does not silently turn daily protection off.
 - Quarterly restore test into an isolated recovery environment; evidence includes elapsed recovery time against the accepted 24-hour RTO, row counts, tenant-isolation smoke tests, random media checksum checks, and application sign-in.
 - Cognito configuration is reproducible in Terraform, but password-verifier recovery/export is limited. The regional disaster runbook must include user re-verification/reset behavior.
 
-Regional copies do not protect against loss of access to the entire AWS account. A future separate backup account is an explicit extension of the recovery boundary. Backup storage, transfer, requests, and restore drills are separately budgeted in `cost_model.md`; prefer native backup features and short rolling retention before adding paid backup management or a live reader. Local-only unacknowledged drafts remain dependent on the physical device and are outside the server RPO.
+Regional copies do not protect against loss of access to the entire AWS account. A future separate backup account is an explicit extension of the recovery boundary. Backup storage, transfer, requests, and restore drills are separately budgeted in `cost_model.md`; prefer native backup features and short rolling retention before adding paid backup management or a live reader. Unacknowledged browser input is ephemeral and outside the server RPO.
 
 No artifact is called a backup until a restore is tested.
 
@@ -680,7 +688,7 @@ Metrics:
 
 - Core: request count, status, p50/p95/p99 latency, cold starts, throttles, concurrency.
 - Database: ACUs, resume count/time, connections/Data API errors, query latency, I/O, storage, deadlocks.
-- Sync: pending operations/bytes, conflict rate, oldest unacknowledged item.
+- Capture: upload failures, save latency, ambiguous acknowledgments, stale-version conflicts, and permission failures; avoid logging content.
 - Media: upload/validation failures, queue age, DLQ depth, processing latency by stage.
 - AI: turns/images, model and prompt version, input/output usage, latency, schema rejection, fallback, user correction/confirmation, estimated cost.
 - Product quality: capture completion, skipped requirement reasons, duplicate rate, data completeness, maintenance generated/completed.
@@ -716,21 +724,20 @@ The GitHub repository is public, confirmed by read-only inspection on 2026-09-07
 1. Feature branches merge by pull request to protected `dev` after required checks.
 2. `dev` merge deploys dev automatically and runs smoke tests.
 3. Production release is a pull request from `dev` to protected `main`; no unrelated direct changes to `main`.
-4. `main` merge creates versioned web/Lambda/mobile metadata artifacts with commit SHA and SBOM.
+4. `main` merge creates versioned web/Lambda artifacts with commit SHA and SBOM.
 5. Production Terraform plan, database migration compatibility check, and smoke-test plan are reviewed before manual approval.
 6. Deploy additive/backward-compatible database changes, server code, then clients; destructive schema cleanup occurs only in a later release after old clients age out.
 7. Tag the successful release and retain artifact/plan/checksum evidence.
 
 Hotfixes branch from `main`, merge back to `main`, and are immediately reconciled into `dev`.
 
-### 15.3 Mobile builds
+### 15.3 Shared web release; native builds deferred
 
-- `mac-dev` is Erick's macOS build/signing host for iOS; `linux-dev` is his Ubuntu build/test host for Android and may perform Android release signing once its key custody is configured. Shared TypeScript and cloud checks remain on CodeBuild.
-- Both aliases are reachable by SSH from this development host. Read-only checks on 2026-09-07 found Xcode on `mac-dev` and Java/Node on `linux-dev`. Host reachability is confirmed; pinned Node/package tooling on the Mac, Android SDK/emulator/device setup, signing identities, provisioning profiles, and store credentials still require implementation validation.
-- Mobile jobs accept only an immutable, reviewed commit/release identifier. A trusted release coordinator on this development host invokes the SSH aliases and collects artifacts/checksums/provenance. Hosts use dedicated build identities and clean job directories, with iOS keys in a protected keychain and Android keys in restricted storage. Nothing private belongs in the public repository.
-- SSH aliases and private LAN reachability are local configuration, not a route available to AWS CodeBuild. The coordinator pulls a pending mobile job over outbound AWS HTTPS and reports completion through a CodePipeline custom action; start the coordinator when a mobile release is requested. It dispatches only reviewed `dev`/`main` commits, stages source and lockfiles, verifies the returned build manifest, uploads immutable artifacts, and reports success/failure against the exact pipeline job. No inbound public SSH, NAT gateway, or always-on cloud bridge is required.
-- Do not register these persistent machines as general-purpose runners for the public repository. Their signing credentials and local network make them trusted release infrastructure. Public PR tests stay in disposable jobs; native tests/signing run after review through the coordinator. Host unavailability leaves a mobile job pending or failed with a visible timeout; it does not interrupt the running cloud application. Web/API releases can proceed independently unless a release explicitly requires matching mobile artifacts.
-- Record host OS, Xcode/SDK/Java/Node versions and toolchain locks with artifacts. Local hardware, electricity, maintenance, and Apple/Google program fees remain real costs, but there is no CodeBuild macOS fleet or cloud Android device farm at launch.
+- The same web artifact serves desktop and mobile; CodeBuild/CodePipeline is the only application release path for v1. No native signing, app-store account, SSH coordinator, or custom mobile pipeline action is required.
+- `mac-dev` and `linux-dev` remain available as existing hosts for optional browser/device testing or a future separately approved native effort. Their configuration and credentials are not changed by decision 0007.
+- Test actual iPhone Safari and Android Chrome for camera/microphone access, photo quality, foreground voice, interruption, permission denial, and connectivity recovery. Desktop viewport emulation is insufficient evidence for device capture.
+- Public pull requests stay in restricted disposable jobs. Do not register persistent local/LAN hosts as public-repository PR runners.
+- Older open browser tabs may run a previous release. Keep APIs backward compatible through rollout, expose a refresh-required state when necessary, and never discard unsaved input silently during an upgrade.
 
 ### 15.4 AWS accounts and environments
 
@@ -757,8 +764,8 @@ Q-032 confirms the sequence: develop and test in the current account; if the pro
 
 ```text
 apps/
-  web/                    React estate UI
-  mobile/                 React Native iOS/Android app
+  web/                    React mobile capture and desktop estate UI
+  mobile/                 deferred native placeholder; no v1 build
 services/
   core-api/               Lambda modular monolith
   conversation-api/       AI session controller
@@ -779,13 +786,12 @@ infra/
   modules/
   environments/dev/
   environments/prod/
-tools/
-  mobile-release/
+tools/                    shared web/API delivery and validation
 .github/workflows/
 docs/
 ```
 
-Use a TypeScript/pnpm workspace for web, mobile, contracts, and Lambdas. Keep domain logic runtime-independent. Native image tooling is built/tested for Lambda arm64. Exact framework/library selection is an implementation ADR.
+Use a TypeScript/pnpm workspace for the shared web client, contracts, and Lambdas. Keep domain logic runtime-independent. Native image tooling is built/tested for Lambda arm64; this is unrelated to native phone applications. Browser media-library selection and the tested browser support floor are implementation decisions.
 
 ## 16. Testing and AI evaluation
 
@@ -796,7 +802,7 @@ Use a TypeScript/pnpm workspace for web, mobile, contracts, and Lambdas. Keep do
 - Contract tests: OpenAPI request/response and generated client compatibility.
 - Database integration: real PostgreSQL, migrations forward/backward compatibility, RLS/adversarial tenant tests, query plans.
 - AWS integration: ephemeral or dedicated dev resources for S3 grants, SQS retry/DLQ, Cognito claims, Data API limits, Bedrock schemas.
-- Mobile tests: offline/restart, upload interruption, permission denial, backgrounding, low storage, accessibility.
+- Mobile browser tests: actual iPhone/Android camera and microphone, upload interruption, permission denial, screen lock/tab switching, network loss, session expiry, honest save status, safe retry, and accessibility. No offline/process-death draft survival requirement.
 - Web end-to-end: estate search, report, rule dry-run, export, role restrictions.
 - Resilience: duplicate/out-of-order events, DB pause/resume, throttles, model timeout, poison media, partial deploy.
 - Security: SAST, dependency/secret/IaC scans, authorization matrix, upload corpus, prompt injection corpus.
@@ -821,7 +827,7 @@ Measure capture-kind precision/recall, exact/normalized field accuracy, calibrat
 - Privacy acceptance verifies collection purpose, authorized recipients, tenant controls, and policy-driven retention/deletion for each enabled feature; provider identity and privacy/support contacts identify Erick Brown initially.
 - 100% retriable, idempotent final commits and async consumers.
 - No unconfirmed AI value reaches serial/model/location/reading/financial authoritative fields.
-- Offline draft survives process death and synchronizes after a simulated multi-day outage.
+- Network loss visibly pauses online capture; unsent input is never labeled saved. Retry after a lost response produces no duplicate asset/media; acknowledged durable drafts resume from the server. Unsent input need not survive reload or process death.
 - Restore test meets approved RTO/RPO.
 - Voice and camera workflows meet accessibility and manual-fallback criteria.
 - AI evaluation verifies advisory safety reminders, optional measurements, immediate skip/refusal handling, and no claim of work-site or worker certification; human safety decisions remain with the church and workers.
@@ -831,11 +837,11 @@ Measure capture-kind precision/recall, exact/normalized field accuracy, calibrat
 
 ### Phase 0 — decisions and foundations
 
-Apply accepted Q-001 through Q-009 and Q-031/Q-032, conduct pilot research, and establish CI/Terraform/security/privacy baselines in the `default` profile's development account in `us-east-2`. Validate mobile toolchains on `mac-dev` and `linux-dev`. Design restore tests for the accepted 24-hour RTO. Defer creation of the separate production account until the church accepts the product; no production account is needed for development foundations.
+Apply accepted operating/infrastructure decisions and decision 0007; establish CI/Terraform/security/privacy baselines in the `default` profile's development account in `us-east-2`. Finish the synthetic web/health-API preview deployment and validate the mobile browser/device test matrix. Design restore tests for the accepted 24-hour RTO. Defer creation of the separate production account until the church accepts the product; native toolchains/signing are not prerequisites.
 
 ### Phase 1 — trustworthy asset register
 
-Identity/RBAC, locations, asset types/schemas, CRUD, media upload/variants, audit, web register/detail, mobile structured capture, offline queue, exact search, tenant export, backups/restore. No generative commit path yet.
+Identity/RBAC, locations, asset types/schemas, CRUD, media upload/variants, audit, desktop register/detail, online mobile structured capture, server-saved drafts, exact search, tenant export, retention/purge, backups/restore. First demonstrate one asset/photo created on a phone and found/edited on desktop. No offline queue or generative commit path.
 
 ### Phase 2 — assisted capture
 
@@ -868,7 +874,8 @@ Production entry gate: record the church's acceptance of the pilot, then bootstr
 | Search | PostgreSQL FTS/trigram/facets | No always-on search floor; consistent data | Measured relevance/latency/scale fails SLO |
 | Media | S3 originals + derived variants | Durable, cheap, direct transfer | Never for core media storage |
 | AI | Bedrock model gateway, Nova 2 Lite provisional | Multimodal, pay-per-use, model abstraction | Evaluation, region, price, or compliance changes |
-| Voice | Transcribe streaming + native TTS, turn-based | Serverless, controllable, accessible fallback | Full-duplex demonstrably improves field UX |
+| Client | One responsive React web application; online-only | Shared delivery, foreground mobile capture, no offline/native lifecycle | Pilot evidence justifies a separately approved native/offline capability |
+| Voice | Transcribe streaming + browser speech synthesis, turn-based | Controlled transcription, visible text/manual fallback | Device quality/privacy tests require an approved cloud voice or full-duplex improves field UX |
 | Analytics | Bounded PostgreSQL reports, async export | Minimal platform and immediate consistency | Workload justifies S3/Athena/warehouse |
 | Service operator | Erick Brown initially; possible later transfer to an LLC | Named ownership and support contact for the pilot | Erick incorporates and transfers operation |
 | Tenant deployment | Multi-tenant SaaS; one initial church, shared tables with forced RLS | Additional churches can join without re-platforming | Contract requires dedicated isolation |
@@ -876,16 +883,16 @@ Production entry gate: record the church's acceptance of the pilot, then bootstr
 | Physical-work safety | Human responsibility; AI reminders are advisory | Humans decide whether and how work is performed | Explicit change to the product's operational scope |
 | Processing regions | Ohio preferred; Ohio, N. Virginia, and Oregon approved | Match the owner's regional choice and allow needed service routing | Additional region needs approval or tenant policy changes |
 | Environment accounts | Develop/test in the current `default` account; separate production account after church acceptance | Defer production bootstrap until the product is accepted while preserving account isolation | Explicit later account migration or ownership change |
-| Delivery | Public GitHub repo, CodeBuild Actions runners, CodePipeline deploys; local mobile hosts | Reuse confirmed tooling and owned build machines | Measured release capacity or availability requires change |
+| Delivery | Public GitHub repo, CodeBuild Actions runners, CodePipeline web/API deploys | One release serves phones and desktop; no native signing lane | Measured release capacity or availability requires change |
 | Recovery | Restore service within 24 hours; preferred data loss ≤24 hours, tolerated ceiling 7 days; backup/restore, no live standby | Favor modest storage/request cost during long idle periods | Backup economics or recovery-time requirements change |
 | Database idle posture | Production and development pause at 0 ACU after five minutes | Long idle periods should incur no continuously billed database compute | Availability requires a zero-minimum reader or product requirements explicitly supersede scale-to-zero |
-| Edge plan | CloudFront Free in both environments | No fixed edge charge at launch; bundled WAF/DDoS features remain | Measured allowance, access-log, or contractual SLA requirements justify another plan |
+| Edge plan | Standard CloudFront + WAF pay-as-you-go, decision 0006 | Owner accepts the WAF baseline; no Free subscription dependency | Measured usage or security/SLA needs justify revisiting |
 
 Rejected launch choices include EKS/ECS, an ALB, NAT gateways, OpenSearch Serverless/domain, Redis/ElastiCache, RDS Proxy, Aurora Global Database, provisioned Bedrock throughput, Step Functions for each interactive session, per-tenant databases, and event sourcing as the primary persistence model. Each adds a fixed floor, operational burden, or complexity without an evidenced requirement.
 
 ## 19. Decision register
 
-As of 2026-09-07, Q-001 through Q-009 and Q-031/Q-032 are accepted by Erick Brown: 11 accepted decisions. There are 21 remaining questions: 0 P0, 12 P1, and 9 P2. Priority meanings: P0 blocks dependent foundational implementation; P1 blocks the affected feature/release; P2 can use the documented default initially. Account eligibility within Q-023 remains a deployment check despite the question's P2 grouping.
+The dated decision records are authoritative. Q-001 through Q-009 and Q-031/Q-032 are accepted; subsequent budget, retention, photo, backup, and edge decisions narrow Q-010/Q-012/Q-014/Q-023. Decision 0007 closes Q-013 and supersedes native build/framework/local-storage assumptions in Q-009/Q-025. Priority meanings: P0 blocks dependent foundational implementation; P1 blocks the affected feature/release; P2 can use the documented default initially. No open product question blocks the synthetic dev preview; real-data and production gates remain separate.
 
 ### 19.1 Accepted decisions
 
@@ -899,7 +906,8 @@ As of 2026-09-07, Q-001 through Q-009 and Q-031/Q-032 are accepted by Erick Brow
 | Q-006 | 99.5% availability and a 60-second cold-start allowance accepted. Prefer no more than one day of data loss at modest cost; up to seven days is tolerable. Recovery time is separately accepted in Q-031. | Erick Brown | 2026-09-07 |
 | Q-007 | Use the account reached by local AWS profile `default` for development/testing. Terraform, tags, and parameterized configuration must support a later account move. Production placement is tracked separately in Q-032. | Erick Brown | 2026-09-07 |
 | Q-008 | Confirmed: GitHub Actions checks run on CodeBuild runners and CodePipeline orchestrates deployment using the same repository scripts. | Erick Brown | 2026-09-07 |
-| Q-009 | Public repository; SSH host `mac-dev` builds/signs iOS and `linux-dev` builds/tests Android. Trusted local mobile dispatch is separate from disposable public-PR jobs. | Erick Brown | 2026-09-07 |
+| Q-009 | Public repository. Originally selected `mac-dev`/`linux-dev` for native builds; decision 0007 defers native release/signing and removes those hosts as release dependencies. Disposable public-PR jobs remain isolated from local hosts. | Erick Brown | 2026-09-07; amended 2026-09-25 |
+| Q-013 | Online-only v1 in the shared mobile/desktop web client. No offline viewing/capture, persistent local queue, deferred audio, or background synchronization. Native applications are deferred; optional Home Screen installation does not add offline support. See decision 0007. | Erick Brown | 2026-09-25 |
 | Q-031 | A 24-hour recovery time after a regional disaster is acceptable. Demonstrate the target in restore drills; it is separate from the accepted data-loss policy. | Erick Brown | 2026-09-07 |
 | Q-032 | Develop/test in the current account. If the church accepts the product, create a separate production account and deploy production there; retain the development environment in the current account. | Erick Brown | 2026-09-07 |
 
@@ -910,19 +918,18 @@ As of 2026-09-07, Q-001 through Q-009 and Q-031/Q-032 are accepted by Erick Brow
 | Q-010 | P1 | What production domain and email identities will be used? | Dev DNS/email domain accepted as `qm.ejtbrown.com`; operational alert recipient supplied privately. Production domain and sender identities remain TBD. |
 | Q-011 | P1 | Which countries, languages, accents, currencies, units, fiscal years, and time zones must launch support? | US English, USD, both US customary and SI display, tenant time zone. |
 | Q-012 | P1 | For the confirmed one-church pilot, what are the users, assets, photos, voice minutes, API traffic, and imports, and what growth is expected in years one and three? | Development budget accepted at $100/month; one initial tenant. Workload volumes and future growth remain illustrative. |
-| Q-013 | P1 | What must work offline, for how long, and may raw audio ever be queued? | Structured drafts/media yes; raw audio no by default. |
-| Q-014 | P1 | What remaining backup-purge, metadata-duration, and exceptional-hold rules are required? | Accepted: originals/transcripts 15 days, audit one year, backups three months; resized photos persist until photo/asset/tenant deletion; purge content and retain minimal deletion metadata/timestamp. See decisions 0004 and 0005 for unresolved purge details. |
+| Q-014 | P1 | What happens to deleted content inside retained backups? Compliance holds remain a deferred question. | Accepted: originals/transcripts 15 days, audit one year, backups three months; resized photos persist until photo/asset/tenant deletion. Minimal deletion metadata/timestamp follows the backup horizon, currently 90 days after deletion (decision 0008). Backup-content purge semantics remain a real-data gate, not a synthetic-preview blocker. |
 | Q-015 | P1 | Must EXIF location/device metadata be retained, stripped, or tenant-configurable? | Strip from derived images; retain selected original metadata only with policy. |
 | Q-016 | P1 | Required identity: invitations, self-signup, SAML/OIDC, passkeys, MFA, SCIM? | Invitation-only Cognito, MFA for privileged roles, no enterprise federation v1. |
 | Q-017 | P1 | Which accounting methods/policies and external accounting products must be supported? | Straight-line book and CSV export first; domain review required. |
 | Q-018 | P1 | What makes an insurance/disaster package acceptable to target carriers/relief agencies? | Generic signed/checksummed PDF/CSV/JSON/media manifest first. |
-| Q-019 | P1 | What notification channels are permitted: email, push, SMS, calendar, webhook? | Email and mobile push; avoid SMS cost except recovery. |
+| Q-019 | P1 | What notification channels are permitted: email, web push, SMS, calendar, webhook? | Email first provisionally; web push is optional future scope, not a reason to require installation or native apps. Avoid SMS cost except recovery. |
 | Q-020 | P1 | Who may correct AI results, and should accepted corrections become an evaluation/training dataset? | Corrections are audit events; reuse requires explicit consent/governance. |
 | Q-021 | P1 | Are users allowed to photograph people, documents, or sensitive spaces accidentally, and what redaction workflow is needed? | Warn and provide delete/redact; no automatic face use. |
 | Q-022 | P2 | Is the five-minute production auto-pause timeout acceptable, and does availability require a co-pausing reader? | Five minutes and no reader; keep `min_capacity=0` unless the product owner explicitly changes the scale-to-zero goal. |
-| Q-023 | P2 | Is each selected deployment account eligible for CloudFront flat-rate plans, and which measured allowance, request-log, or contractual SLA threshold should trigger a production plan change? | Free at launch if eligible; application/origin audit, CloudTrail, metrics, and the security dashboard compensate for absent standard CloudFront/WAF request logs. |
-| Q-024 | P2 | Native TTS quality acceptable, or is a consistent cloud voice required? | Native TTS first. |
-| Q-025 | P2 | Full mobile app framework, local encryption, crash reporting, and push provider? | React Native; select through implementation ADR/security review. |
+| Q-023 | P2 | Which measured usage, request-log, or contractual SLA requirements should trigger a later edge-plan review? | Standard CloudFront + WAF accepted in decision 0006; Free-plan eligibility no longer blocks deployment. |
+| Q-024 | P2 | Is browser speech synthesis acceptable on pilot devices, including quality and processing privacy, or is an approved cloud voice required? | Test browser synthesis first; always display text. |
+| Q-025 | P2 | Which tested browser/version floor and privacy-preserving client diagnostics should the pilot support? | Start validation with iPhone Safari and Android Chrome. React Native and durable local encryption are superseded by decision 0007; no native framework selection remains. |
 | Q-026 | P2 | QR/asset label format, printing, and collision/import policy? | Opaque Quartermaster URL plus human-readable tenant-scoped asset tag. |
 | Q-027 | P2 | What integrations are required: calendar, accounting, insurer, BMS/IoT, barcode, SSO, webhooks? | Export/webhook boundary first. |
 | Q-028 | P2 | Is customer-managed encryption required for any tenant? | AWS-owned keys initially; price/operate CMKs as premium isolation. |
@@ -960,6 +967,6 @@ On 2026-09-07 Erick accepted Q-005 through Q-009, documented in [the infrastruct
 
 Later on 2026-09-07 Erick accepted Q-031/Q-032 in [the recovery-time and production-account decision](docs/decisions/0003-recovery-time-and-production-account.md): a 24-hour RTO, development in the existing account, and a separate production account created if the church accepts the product. This closes those two questions without changing the data-loss policy or authorizing immediate account creation.
 
-Before an affected capability launches, close its remaining P1 questions; P2 defaults may proceed with documented verification gates. Acceptance of these decisions authorizes their incorporation in the design, not deployment, an account migration, credential changes, or publishing local files. Current development credentials and host reachability are confirmed, but production setup, mobile signing/toolchain readiness, and backup economics still require implementation validation.
+Before an affected capability launches, close its remaining P1 questions; P2 defaults may proceed with documented verification gates. Acceptance of a design decision alone does not authorize an account migration, credential changes, or publication of private files. Development deployment was separately authorized below. Production setup, actual-browser capture, and recovery still require implementation validation; native signing/toolchain readiness is no longer a launch gate.
 
 Erick subsequently supplied the $100 development budget, retention/deletion rules, and `qm.ejtbrown.com` DNS/email domain and instructed implementation to begin. [Decision 0004](docs/decisions/0004-development-budget-and-retention.md) records those constraints. [Decision 0005](docs/decisions/0005-resized-photo-retention-and-development-deployment.md) accepts resized photos until photo/asset/tenant deletion, the privately configured alert recipient, and development deployment. The [implementation status](docs/IMPLEMENTATION.md) and [deployment record](docs/DEPLOYMENT-2026-09-07.md) distinguish the deployed data/governance foundation from the remaining web/API/identity, CI/CD, mobile, AI, and recovery work. Retained-backup purge semantics remain unresolved.

@@ -2,6 +2,16 @@
 
 Status: design estimate, not a quote
 
+## Current development decision — 2026-09-24
+
+This section supersedes older Free-plan and twice-daily/90-day assumptions below for development. The owner selected standard CloudFront + WAF and weekly historical snapshots. Ohio native PITR remains seven days; snapshots run every 12 hours with seven-day retention, plus Sundays at 00:00 UTC with 90-day retention from creation. Overlapping windows retain the longer-lived recovery point. Existing snapshots retain their original expiry; no pruning is authorized.
+
+At a constant illustrative 10 GB database, approximately 12 weekly snapshots older than PITR cost `12 * 10 * $0.021 = $2.52/month`, versus `$34.86` for 166 older twice-daily snapshots. Ohio backup rate rechecked 2026-09-24 via Price List SKU `PYNU7WJBSCTWR8XF`. Add database storage `$1.00` and one secret `$0.40` (regional rates in section 3.1), and standard WAF `$5/ACL + $1/rule = $6`: **$9.92/month steady-state component estimate**, saving about **$32.34/month** against the prior $42.26 example. Snapshot phase/size, PITR changed bytes and legacy recovery points affect actual cost. Savings phase in as existing recovery points expire.
+
+Standard WAF adds `$0.60/million requests` for the current one-rule configuration. CloudFront delivery has no monthly distribution fee, but requests, transfer, edge functions and invalidations are usage-billed. Its published monthly allowances are 1 TB transfer, 10 million requests and 2 million function invocations; these are shared with other account workloads, not guaranteed incremental credits. At low usage with available allowances the combined edge is roughly $6–$7/month; this is not a cap. No Free-plan S3/DNS credits are assumed. Photo storage, S3 operations, logging, shared DNS/state, CI, active database/Lambda/AI, regional recovery, taxes and support are excluded from $9.92.
+
+Current sources: [WAF pricing](https://aws.amazon.com/waf/pricing/), [CloudFront pay-as-you-go](https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/), [overlapping backup rules](https://docs.aws.amazon.com/aws-backup/latest/devguide/plan-options-and-configuration.html), [existing recovery-point retention](https://docs.aws.amazon.com/aws-backup/latest/devguide/updating-a-backup-plan.html). Checked 2026-09-24. This is a bounded update, not a refresh of all older full-product scenarios. No workload measurement or completed rollout is implied.
+
 Currency: USD, public on-demand list prices
 
 Pricing region: US East (Ohio), with US West (Oregon) for proposed recovery copies and CloudFront global pricing
@@ -52,7 +62,7 @@ The AWS Price List Query API is available through the local `default` profile an
 - One core API request produces 1.5 billable Data API request units on average. Validate this after query batching and payload measurements.
 - Preferred completed recovery-point age is ≤24 hours, with seven days the accepted data-loss tolerance if shorter protection is disproportionately expensive. Retain backups three months (90-day convention), with seven-day native PITR and 12-hour snapshots. Same-region snapshot retention is declared; cross-region database/media recovery is pending. No warm DR database. Costs are additive under sections 5.2 and 5.3.
 - The 24-hour regional recovery time is accepted in Q-031. Timed restore drills must demonstrate it; retain backup-and-restore rather than introducing a live standby or assuming the target has already been achieved.
-- `mac-dev` supplies iOS build/signing and `linux-dev` supplies Android build/test capacity. Their existing hardware/electricity/maintenance are outside the AWS bill; cloud mobile build fleets are not included.
+- Decision 0007 defers native apps, signing and their build coordinator. One web release serves phones and desktop; existing `mac-dev`/`linux-dev` hosts may support optional testing. Device/test-host costs are outside the AWS bill; no cloud mobile build fleet is included. This scope change does not itself alter the cloud runtime/AI/storage estimates.
 
 ## 3. Pricing provenance
 
@@ -334,9 +344,9 @@ DynamoDB can have near-zero request floor and very low simple-key request cost. 
 
 S3 Standard-IA can reduce storage after the required access window, but retrieval charges, per-object monitoring/transition, minimum size, and minimum duration apply. Images are multi-object groups (original + variants); keep thumbnails/display variants warm and lifecycle originals only after access telemetry and insurance/disaster retrieval objectives are known.
 
-### 8.7 CI and mobile builds
+### 8.7 CI and shared web delivery
 
-CodePipeline/CodeBuild use on-demand cloud jobs, with no provisioned runner fleet. Shared checks consume CodeBuild Linux minutes. iOS uses existing `mac-dev`; Android uses existing `linux-dev`. A coordinator started on this host for a mobile release polls the CodePipeline custom action over HTTPS and dispatches locally by SSH; no cloud bridge/VPN/NAT or paid macOS fleet is required. Include custom-action execution, artifact transfer, and tool downloads in CI usage. Local hardware, power, maintenance, storage, and owner time are real costs outside this AWS estimate; their availability affects mobile release time, not cloud uptime.
+CodePipeline/CodeBuild use on-demand cloud jobs, with no provisioned runner fleet. Shared web/API checks and builds consume CodeBuild Linux minutes, artifact storage/transfer and tool downloads. Decision 0007 removes the planned native SSH coordinator, signing and app-store release prerequisites from v1. Actual-device browser testing still costs time and potentially hardware; those costs are outside the AWS estimate. No cloud bridge/VPN/NAT or paid macOS fleet is required. This is a client-scope update, not a new price retrieval or measured AWS savings claim.
 
 ## 9. Runaway-cost protections
 

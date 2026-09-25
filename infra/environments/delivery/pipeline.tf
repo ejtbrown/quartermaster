@@ -62,9 +62,11 @@ resource "aws_iam_role_policy" "deploy" {
       { Effect = "Allow", Action = ["lambda:UpdateFunctionCode", "lambda:GetFunctionConfiguration", "lambda:GetFunction", "lambda:PublishVersion"], Resource = aws_lambda_function.api.arn },
       { Effect = "Allow", Action = ["lambda:GetAlias", "lambda:UpdateAlias"], Resource = "${aws_lambda_function.api.arn}:live" },
       { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = "${aws_lambda_function.api.arn}:*" },
-      { Effect = "Allow", Action = ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation"], Resource = aws_cloudfront_distribution.site.arn },
-      { Effect = "Allow", Action = ["cloudformation:DescribeStacks"], Resource = aws_cloudformation_stack.edge_free.id },
-      { Effect = "Allow", Action = ["pricingplanmanager:GetSubscription"], Resource = aws_cloudformation_stack.edge_free.outputs["SubscriptionArn"] }
+      { Effect = "Allow", Action = ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation", "cloudfront:GetDistribution"], Resource = aws_cloudfront_distribution.site.arn },
+      { Effect = "Allow", Action = ["wafv2:GetWebACL"], Resource = aws_wafv2_web_acl.site.arn },
+      # ListSubscriptions has no resource-level IAM scope. Read metadata only;
+      # the release validator filters the exact distribution and web ACL.
+      { Effect = "Allow", Action = ["pricingplanmanager:ListSubscriptions"], Resource = "*" }
     ]
   })
 }
@@ -137,7 +139,6 @@ resource "aws_codebuild_project" "release" {
         QM_API_FUNCTION        = aws_lambda_function.api.function_name
         QM_DISTRIBUTION_ID     = aws_cloudfront_distribution.site.id
         QM_PUBLIC_URL          = "https://${local.domain}"
-        QM_FREE_PLAN_STACK     = aws_cloudformation_stack.edge_free.name
       } : {}
       content {
         name  = environment_variable.key
