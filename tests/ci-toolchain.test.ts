@@ -2,6 +2,16 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 describe('disposable CI toolchain installation', () => {
+  it('scopes Lambda alias management to the exact unqualified function', () => {
+    const pipeline = readFileSync(
+      'infra/environments/delivery/pipeline.tf',
+      'utf8',
+    );
+    expect(pipeline).toMatch(
+      /Action\s*=\s*\["lambda:GetAlias",\s*"lambda:UpdateAlias"\],\s*Resource\s*=\s*aws_lambda_function\.api\.arn\s*}/,
+    );
+  });
+
   it('installs build tools locally without overwriting the image Node executable', () => {
     const installer = readFileSync('tools/ci-install.sh', 'utf8');
     const buildspec = readFileSync('buildspec.yml', 'utf8');

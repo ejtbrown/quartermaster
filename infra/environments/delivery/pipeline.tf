@@ -60,7 +60,9 @@ resource "aws_iam_role_policy" "deploy" {
       { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObject", "s3:GetObjectVersion"], Resource = "${aws_s3_bucket.delivery["web"].arn}/*" },
       { Effect = "Allow", Action = ["s3:ListBucket", "s3:GetBucketLocation"], Resource = aws_s3_bucket.delivery["web"].arn },
       { Effect = "Allow", Action = ["lambda:UpdateFunctionCode", "lambda:GetFunctionConfiguration", "lambda:GetFunction", "lambda:PublishVersion"], Resource = aws_lambda_function.api.arn },
-      { Effect = "Allow", Action = ["lambda:GetAlias", "lambda:UpdateAlias"], Resource = "${aws_lambda_function.api.arn}:live" },
+      # Alias-management APIs authorize against the unqualified function ARN.
+      # Runtime invocation remains qualified; no other function is granted.
+      { Effect = "Allow", Action = ["lambda:GetAlias", "lambda:UpdateAlias"], Resource = aws_lambda_function.api.arn },
       { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = "${aws_lambda_function.api.arn}:*" },
       { Effect = "Allow", Action = ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation", "cloudfront:GetDistribution"], Resource = aws_cloudfront_distribution.site.arn },
       { Effect = "Allow", Action = ["wafv2:GetWebACL"], Resource = aws_wafv2_web_acl.site.arn },
