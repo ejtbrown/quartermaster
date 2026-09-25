@@ -21,12 +21,12 @@ review_scope:
     - 'Resource entries below describe the complete target; implementation_evidence identifies which subset is actually deployed. Proposed resources must not be treated as live inventory.'
     - "Production domain remains undecided; development/testing uses the default profile's account, with a separate production account created only after church acceptance."
 implementation_evidence:
-  active_milestone: '2026-09-24: tiered backups applied; standard CloudFront/WAF source prepared; GitHub AVAILABLE; failed empty Free-plan stack deleted from AWS/Terraform under explicit owner authorization.'
-  status: 'data/governance deployed; private health Lambda and disabled hosting provisioned; public application not deployed'
+  active_milestone: '2026-09-25: Step 1 synthetic web/health API deployed through automatic dev-push CodePipeline/CodeBuild; independent HTTPS, artifact and private-origin checks passed'
+  status: 'data/governance and public synthetic preview deployed; authenticated asset intake and AI remain unimplemented'
   source: 'docs/IMPLEMENTATION.md'
   latest_client_decision: '2026-09-25: online-only shared mobile/desktop web accepted; native builds and offline queues deferred; design update only'
-  web: 'apps/web: synthetic estate preview, no authentication or persistence'
-  core_api: 'services/core-api: built health-only handler, no database calls'
+  web: 'apps/web: deployed synthetic estate preview at https://qm.ejtbrown.com; no authentication or persistence'
+  core_api: 'services/core-api: deployed health-only handler, no database calls'
   contracts_and_policy: ['packages/contracts', 'packages/domain']
   schema: 'db/migrations/0001_asset_foundation.sql; PostgreSQL RLS tests in PGlite'
   terraform:
@@ -37,9 +37,9 @@ implementation_evidence:
       'infra/environments/delivery',
     ]
   delivery_state: 'Separate protected dev/delivery.tfstate; application release roles cannot access this or database state.'
-  delivery_plan: 'September 8: 42 hosting resources created. September 24: failed empty subscription stack deleted with explicit authorization; fresh remaining delivery plan has one comment update and one deploy-policy create, unapplied.'
-  delivery_blockers:
-    ['Create and validate pipeline, release artifacts, and public delivery']
+  delivery_plan: 'September 25: publication/CI and two scoped installer/alias-policy corrections applied from reviewed saved plans; no deletions; fresh delivery plan has no changes'
+  delivery_blockers: []
+  first_successful_release: '194680f3c140dfd86c9c6b28fc17281a9be6c3df; execution 3621db62-16ea-48e2-9699-900a86721dcb; later documentation commits may advance the live SHA'
   deployed_foundation_resources:
     [
       'database_vpc',
@@ -51,11 +51,11 @@ implementation_evidence:
       'budget',
       'operations_topic',
     ]
-  ci: 'Workflow/buildspec/immutable release and rollback scripts plus Terraform projects/pipeline implemented; runner/webhook/pipeline not yet provisioned; all external PR contributors now require approval'
+  ci: 'Three disposable on-demand CodeBuild projects and dev-only CodePipeline deployed; automatic dev-push release verified. Actions runner verified via workflow dispatch; automatic Actions push/PR events not yet observed. External contributors require approval.'
   bootstrap_plan: 'Original five resources plus one GitHub connection applied; protected local bootstrap state, no migration'
   foundation_plan: '23 additions applied; one parameter-only reconciliation update; no destruction; final development plan has no changes'
   latest_backup_rollout: '2026-09-24: one in-place plan update applied; live 12-hour/seven-day and weekly/90-day rules verified; follow-up foundation plan has no changes; existing recovery points untouched'
-  latest_edge_preflight: '2026-09-24: exact distribution/WAF and absence of subscription association verified; failed empty stack deletion completed; remaining standard-edge delivery changes are unapplied'
+  latest_edge_preflight: '2026-09-25: Enabled/Deployed standard distribution/WAF verified; no subscription association; HTTPS/security headers and unsigned S3/Lambda origin 403 checks passed'
   live_checks: '32 control-plane checks pass; read-only Data API query succeeds; first encrypted 90-day backup completed; details in docs/DEPLOYMENT-2026-09-07.md'
   idle_observation: 'CloudWatch ServerlessDatabaseCapacity minimum and maximum 0.0 ACU at 2026-09-07 17:22/17:23/17:24 UTC; writer left idle'
   alert_status: 'configured operator email confirmed; operations publishers/alarms not implemented'

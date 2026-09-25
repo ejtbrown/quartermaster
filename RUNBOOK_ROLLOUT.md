@@ -1,14 +1,14 @@
 # Quartermaster rollout and recovery runbook
 
-Status: foundation deployed; hosting/CI scripts implemented and hosting partially provisioned. On 2026-09-24 the owner selected standard CloudFront/WAF and weekly historical snapshots; GitHub authorization is AVAILABLE. Follow the revision procedure below, which supersedes earlier Free-plan gates. Later full-product procedures remain planned.
+Status: foundation and Step 1 synthetic web/health-API delivery are deployed. September 25 exact-commit CodePipeline release and independent live checks passed; see [deployment evidence](docs/DEPLOYMENT-2026-09-25.md). Standard CloudFront/WAF and tiered backups remain selected. Later full-product procedures remain planned; do not repeat completed bootstrap/cleanup plans.
 
 Date: 2026-09-25 (living runbook; historical procedures are labeled)
 
 Client scope: [decision 0007](docs/decisions/0007-online-only-mobile-web.md) accepts one online-only mobile/desktop web client. Native builds/signing, store distribution, the SSH coordinator, offline queues and background synchronization are not v1 release requirements. Verify foreground interruption/retry and acknowledgment-based save status instead. This documentation update performs no cloud deployment.
 
-Deployment status: data/governance validated; private health API and disabled hosting provisioned. Website publication, remote CI/CD, identity, mobile, AI, and regional recovery remain pending.
+Deployment status: data/governance validated; website and health API live through CodeBuild/CodePipeline, with WAF and private origins. Identity, online mobile asset capture, AI and regional recovery remain pending.
 
-Consult `docs/IMPLEMENTATION.md` for verified commands and the exact deployed subset. The dev domain is `qm.ejtbrown.com`; budget is $100/month. Originals/transcripts expire after 15 days, audits after one year, snapshots after 90 days. Resized photos persist until photo/asset/tenant deletion. The alert recipient is supplied privately. Backup-purge semantics and physical purge workers remain unresolved/unimplemented; do not enable destructive content lifecycle rules yet.
+Consult `docs/IMPLEMENTATION.md` for verified commands and the exact deployed subset. The dev domain is `qm.ejtbrown.com`; budget is $100/month. Originals/transcripts expire after 15 days, audits after one year, recent snapshots after seven days and weekly snapshots after 90 days. Deletion metadata follows the backup horizon, currently 90 days after deletion; compliance holds are deferred. Resized photos persist until photo/asset/tenant deletion. The alert recipient is supplied privately. Backup-content purge semantics and physical purge workers remain unresolved/unimplemented; do not enable destructive content lifecycle rules yet.
 
 ## Current development hosting and CI/CD milestone
 

@@ -6,7 +6,7 @@ Status: accepted
 
 Decision owner: Erick Brown
 
-Retain minimal, content-free deletion metadata for the backup horizon: currently 90 days after deletion, matching the accepted three-month backup convention. Retain the deletion timestamp and opaque identifiers needed to prevent deleted content from reappearing during restore. Do not retain the deleted asset/photo/transcript payload in this metadata.
+Retain minimal, content-free deletion metadata for the backup horizon: currently 90 days after deletion, matching the accepted three-month backup convention. Retain the deletion timestamp and opaque identifiers needed to prevent deleted content from reappearing during restore. Do not retain the deleted asset/photo/transcript payload in this metadata. This governs purge/recovery tombstones; the separately accepted one-year, content-free audit-event policy is unchanged.
 
 The implementation must use the configured backup horizon, not an unrelated indefinite tombstone policy. Before expiring a deletion marker, verify that no restore-eligible copy predating that deletion remains. If the recovery horizon is extended, reconcile marker retention before enabling those longer-lived copies. This protects deletion replay; it is not a new compliance-hold policy.
 
