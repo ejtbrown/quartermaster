@@ -21,8 +21,126 @@ a {
   color: inherit;
 }
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
+}
+.welcome {
+  margin: 8vh auto;
+  max-width: 760px;
+  line-height: 1.7;
+}
+.action,
+.operational button,
+.welcome button {
+  display: inline-block;
+  border: 1px solid #94a79b;
+  background: #f5f8f2;
+  color: #24443a;
+  padding: 10px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.operational .primary,
+.welcome .primary {
+  background: #214d40;
+  color: white;
+  border-color: #214d40;
+}
+.operational label {
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+  min-width: 0;
+}
+.operational input,
+.operational select,
+.operational textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #a9b7ac;
+  border-radius: 5px;
+  background: white;
+  color: #263d39;
+  font-size: 16px;
+}
+.operational textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.operational .sidebar {
+  gap: 16px;
+  align-items: stretch;
+}
+.operational .sidebar p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+.editor-panel {
+  background: white;
+  padding: 24px;
+  border: 1px solid #d5dfd1;
+  border-radius: 8px;
+  margin: 24px 0;
+  overflow-wrap: anywhere;
+}
+.editor-panel h2 {
+  margin: 22px 0 12px;
+}
+.editor-panel p,
+.editor-panel li {
+  font-size: 13px;
+  line-height: 1.65;
+}
+.editor-panel li {
+  margin: 14px 0;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 0;
+  border: 0;
+  margin: 20px 0;
+  min-width: 0;
+}
+.form-grid legend {
+  padding: 12px 0;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.observations {
+  border-top: 1px solid #d5dfd1;
+  margin-top: 24px;
+}
+.error {
+  color: #8a2b26;
+}
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .editor-panel {
+    padding: 16px;
+  }
+  .operational header {
+    flex-wrap: wrap;
+  }
 }
 button,
 a,

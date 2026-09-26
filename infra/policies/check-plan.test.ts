@@ -25,6 +25,69 @@ function plan(
     ],
   };
 }
+it('requires invitation-only MFA identity and exact BFF callbacks', () => {
+  const pool = {
+    deletion_protection: 'ACTIVE',
+    mfa_configuration: 'ON',
+    user_pool_tier: 'LITE',
+    admin_create_user_config: [{ allow_admin_create_user_only: true }],
+    software_token_mfa_configuration: [{ enabled: true }],
+  };
+  expect(inspectPlan(plan('aws_cognito_user_pool', pool))).toEqual([]);
+  expect(
+    inspectPlan(
+      plan('aws_cognito_user_pool', { ...pool, mfa_configuration: 'OFF' }),
+    ).join(),
+  ).toContain('TOTP-required');
+  expect(
+    inspectPlan(
+      plan('aws_cognito_user_pool', {
+        ...pool,
+        admin_create_user_config: [{ allow_admin_create_user_only: false }],
+      }),
+    ).join(),
+  ).toContain('invitation-only');
+  const client = {
+    generate_secret: false,
+    allowed_oauth_flows_user_pool_client: true,
+    allowed_oauth_flows: ['code'],
+    callback_urls: ['https://qm.ejtbrown.com/api/auth/callback'],
+    enable_token_revocation: true,
+    access_token_validity: 1,
+    id_token_validity: 1,
+    token_validity_units: [{ access_token: 'hours', id_token: 'hours' }],
+  };
+  expect(inspectPlan(plan('aws_cognito_user_pool_client', client))).toEqual([]);
+  expect(
+    inspectPlan(
+      plan('aws_cognito_user_pool_client', {
+        ...client,
+        allowed_oauth_flows: ['implicit'],
+      }),
+    ).join(),
+  ).toContain('authorization code only');
+  expect(
+    inspectPlan(
+      plan('aws_cognito_user_pool_client', {
+        ...client,
+        callback_urls: ['https://attacker.example'],
+      }),
+    ).join(),
+  ).toContain('exact BFF callback');
+});
+it('permits only the protected runtime credential container, never secret values', () => {
+  expect(
+    inspectPlan(
+      plan('aws_secretsmanager_secret', {
+        name: 'quartermaster-dev/database-runtime',
+        recovery_window_in_days: 30,
+      }),
+    ),
+  ).toEqual([]);
+  expect(
+    inspectPlan(plan('aws_secretsmanager_secret_version', {})).join(),
+  ).toContain('not approved');
+});
 const database = {
   engine: 'aurora-postgresql',
   engine_version: '16.14',

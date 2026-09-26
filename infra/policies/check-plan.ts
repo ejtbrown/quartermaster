@@ -52,6 +52,10 @@ const allowedTypes = new Set([
   'aws_codebuild_project',
   'aws_codebuild_webhook',
   'aws_codepipeline',
+  'aws_cognito_user_pool',
+  'aws_cognito_user_pool_client',
+  'aws_cognito_user_pool_domain',
+  'aws_secretsmanager_secret',
 ]);
 const taggable = new Set([
   'aws_vpc',
@@ -76,6 +80,8 @@ const taggable = new Set([
   'aws_cloudfront_distribution',
   'aws_codebuild_project',
   'aws_codepipeline',
+  'aws_cognito_user_pool',
+  'aws_secretsmanager_secret',
 ]);
 const expectedTags = {
   Application: 'Quartermaster',
@@ -238,11 +244,51 @@ export function inspectPlan(input: unknown): string[] {
           typeof value.reserved_concurrent_executions !== 'number' ||
           value.reserved_concurrent_executions < 1 ||
           value.reserved_concurrent_executions > 5 ||
-          Number(value.timeout) > 10 ||
+          Number(value.timeout) >
+            (value.function_name === 'quartermaster-dev-api' ? 30 : 10) ||
           blocks(value.vpc_config).length
         )
           fail(
             'Delivery Lambdas require bounded concurrency/timeouts and no VPC',
+          );
+        break;
+      case 'aws_cognito_user_pool':
+        if (
+          value.deletion_protection !== 'ACTIVE' ||
+          value.mfa_configuration !== 'ON' ||
+          value.user_pool_tier !== 'LITE' ||
+          blocks(value.admin_create_user_config)[0]
+            ?.allow_admin_create_user_only !== true ||
+          blocks(value.software_token_mfa_configuration)[0]?.enabled !== true
+        )
+          fail(
+            'Identity must remain invitation-only, TOTP-required, protected and Lite tier',
+          );
+        break;
+      case 'aws_cognito_user_pool_client':
+        if (
+          value.generate_secret !== false ||
+          value.allowed_oauth_flows_user_pool_client !== true ||
+          JSON.stringify(value.allowed_oauth_flows) !== '["code"]' ||
+          JSON.stringify(value.callback_urls) !==
+            '["https://qm.ejtbrown.com/api/auth/callback"]' ||
+          value.enable_token_revocation !== true ||
+          Number(value.access_token_validity) !== 1 ||
+          Number(value.id_token_validity) !== 1 ||
+          blocks(value.token_validity_units)[0]?.access_token !== 'hours' ||
+          blocks(value.token_validity_units)[0]?.id_token !== 'hours'
+        )
+          fail(
+            'Use the exact BFF callback, authorization code only, and one-hour identity tokens',
+          );
+        break;
+      case 'aws_secretsmanager_secret':
+        if (
+          value.name !== 'quartermaster-dev/database-runtime' ||
+          value.recovery_window_in_days !== 30
+        )
+          fail(
+            'Only the protected runtime database credential container is approved',
           );
         break;
       case 'aws_lambda_function_url':

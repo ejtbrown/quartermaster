@@ -15,6 +15,9 @@ const functionName = required('QM_API_FUNCTION');
 const distribution = required('QM_DISTRIBUTION_ID');
 const publicUrl = required('QM_PUBLIC_URL');
 const commit = required('QM_RELEASE_SHA');
+const workspaceMode = process.env.QM_EXPECT_WORKSPACE ?? 'false';
+assert.ok(['true', 'false'].includes(workspaceMode));
+const expectWorkspace = workspaceMode === 'true';
 assert.match(account, /^\d{12}$/);
 assert.equal(bucket, `quartermaster-dev-web-${account}-us-east-2`);
 assert.equal(functionName, 'quartermaster-dev-api');
@@ -142,7 +145,8 @@ try {
   const response = JSON.parse(readFileSync(resultPath, 'utf8'));
   assert.equal(response.statusCode, 200);
   assert.equal(JSON.parse(response.body).release, commit);
-  assert.equal(JSON.parse(response.body).assetApiReady, false);
+  assert.equal(JSON.parse(response.body).assetApiReady, expectWorkspace);
+  assert.equal(JSON.parse(response.body).syntheticOnly, true);
   // Content-addressed assets first; retain old assets for rollback and open tabs.
   execFileSync(
     'aws',
@@ -201,7 +205,24 @@ try {
   assert.match(healthResponse.headers.get('cache-control') ?? '', /no-store/);
   const health = await healthResponse.json();
   assert.equal(health.release, commit);
-  assert.equal(health.assetApiReady, false);
+  assert.equal(health.assetApiReady, expectWorkspace);
+  assert.equal(health.syntheticOnly, true);
+  const sessionResponse = await fetch(publicUrl + '/api/auth/session', {
+    signal: AbortSignal.timeout(60000),
+  });
+  assert.equal(sessionResponse.status, 200);
+  assert.match(sessionResponse.headers.get('cache-control') ?? '', /no-store/);
+  assert.deepEqual(await sessionResponse.json(), {
+    authenticated: false,
+    authenticationEnabled: expectWorkspace,
+  });
+  const anonymousAssets = await fetch(
+    publicUrl + '/api/v1/tenants/11111111-1111-4111-8111-111111111111/assets',
+    {
+      signal: AbortSignal.timeout(60000),
+    },
+  );
+  assert.equal(anonymousAssets.status, expectWorkspace ? 401 : 404);
   const page = await fetch(publicUrl, { signal: AbortSignal.timeout(60000) });
   assert.equal(page.status, 200);
   assert.match(await page.text(), /Quartermaster/);

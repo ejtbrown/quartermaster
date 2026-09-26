@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { SessionInfo } from '@quartermaster/contracts';
 import { filterEstate } from '@quartermaster/domain';
 import { demoAssets, demoTenantId } from './fixtures';
+import { Workspace } from './Workspace';
+import { api, messageFor } from './api';
 
 const statusLabels = {
   in_service: 'In service',
@@ -9,6 +12,62 @@ const statusLabels = {
 } as const;
 
 export function App() {
+  const [session, setSession] = useState<SessionInfo>();
+  const [error, setError] = useState('');
+  const [preview, setPreview] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    api<SessionInfo>('/api/auth/session', { signal: controller.signal })
+      .then(setSession)
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) setError(messageFor(error));
+      });
+    return () => controller.abort();
+  }, []);
+  if (preview || session?.authenticationEnabled === false) return <Preview />;
+  if (session?.authenticated) return <Workspace session={session} />;
+  return (
+    <main className="welcome">
+      <p className="eyebrow">QUARTERMASTER · DEVELOPMENT</p>
+      <h1>A clearer picture of your estate.</h1>
+      <p>
+        Record equipment, keep field notes, and plan maintenance in one shared
+        workspace.
+      </p>
+      <div className="notice" role="note">
+        Synthetic records only. Church data intake, photos, voice capture and
+        deletion are not enabled yet.
+      </div>
+      {error ? (
+        <p role="alert">
+          {error}{' '}
+          <button onClick={() => window.location.reload()}>Try again</button>
+        </p>
+      ) : !session ? (
+        <p role="status">
+          Connecting… The database may take up to a minute to wake.
+        </p>
+      ) : (
+        <>
+          <p>
+            Access is invitation-only. Your organization’s membership determines
+            what you can see and change.
+          </p>
+          <a className="primary action" href="/api/auth/login">
+            Sign in
+          </a>
+        </>
+      )}
+      <p>
+        <button onClick={() => setPreview(true)}>
+          Explore the sample register
+        </button>
+      </p>
+    </main>
+  );
+}
+
+export function Preview() {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(demoAssets[0]?.id);
   const assets = filterEstate(demoAssets, demoTenantId, query);

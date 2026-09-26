@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/auth/session', (route) =>
+    route.fulfill({
+      json: { authenticated: false, authenticationEnabled: false },
+    }),
+  );
+});
+
 test('search and selection work without implying cloud persistence', async ({
   page,
 }) => {

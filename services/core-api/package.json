@@ -2,5 +2,13 @@
   "name": "@quartermaster/core-api",
   "version": "0.1.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@quartermaster/contracts": "workspace:*",
+    "@aws-sdk/client-dynamodb": "3.1141.0",
+    "@aws-sdk/lib-dynamodb": "3.1141.0",
+    "@aws-sdk/client-rds-data": "3.1141.0",
+    "@aws-sdk/client-secrets-manager": "3.1141.0",
+    "aws-jwt-verify": "5.2.1"
+  }
 }

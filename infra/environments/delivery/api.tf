@@ -25,11 +25,23 @@ resource "aws_lambda_function" "api" {
   handler                        = "index.handler"
   filename                       = "${path.module}/../../../services/core-api/dist/api.zip"
   source_code_hash               = filebase64sha256("${path.module}/../../../services/core-api/dist/api.zip")
-  memory_size                    = 128
-  timeout                        = 5
+  memory_size                    = var.enable_workspace ? 256 : 128
+  timeout                        = var.enable_workspace ? 30 : 5
   reserved_concurrent_executions = 5
   publish                        = true
-  depends_on                     = [aws_iam_role_policy.api]
+  environment {
+    variables = var.enable_workspace ? {
+      QM_WORKSPACE_ENABLED = "true"
+      QM_ORIGIN            = "https://${local.domain}"
+      QM_COGNITO_DOMAIN    = "https://${aws_cognito_user_pool_domain.workspace[0].domain}.auth.${local.region}.amazoncognito.com"
+      QM_CLIENT_ID         = aws_cognito_user_pool_client.web[0].id
+      QM_USER_POOL_ID      = aws_cognito_user_pool.workspace[0].id
+      QM_SESSIONS_TABLE    = "${local.name}-sessions"
+      QM_DATABASE_ARN      = "arn:aws:rds:${local.region}:${var.expected_account_id}:cluster:${local.name}"
+      QM_APP_SECRET_ARN    = aws_secretsmanager_secret.runtime[0].arn
+    } : { QM_WORKSPACE_ENABLED = "false" }
+  }
+  depends_on = [aws_iam_role_policy.api]
   lifecycle {
     prevent_destroy = true
     # Terraform bootstraps configuration; CodePipeline exclusively owns releases.

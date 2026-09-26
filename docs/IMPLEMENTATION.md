@@ -1,5 +1,11 @@
 # Development implementation status
 
+## Authentication and manual operations
+
+The [authenticated workspace increment](AUTHENTICATED-WORKSPACE.md) adds Cognito/BFF session plumbing, forced membership/capability RLS, a non-owner Data API adapter and operator migration/credential tools, persistent asset editing/search, maintenance/readings, private server drafts, audit and retry/version safeguards. The responsive UI is tested against the actual API and PostgreSQL code with injected identity/session storage.
+
+The owner subsequently authorized deployment while leaving account setup for later. Identity/runtime infrastructure and three live migrations are applied, and two-tenant Aurora integration passed with temporary fixtures removed. The application release is in progress; see the [authenticated deployment record](DEPLOYMENT-2026-09-25-AUTH.md). No users, invitations or permanent workspaces are created. Terraform activation switches still default off for fresh installations. Photo/voice/AI, purge/recovery, reporting and real-data gates remain unfinished; do not infer full Step 2 completion from this manual workflow.
+
 ## Current design revision — 2026-09-25
 
 [Decision 0008](decisions/0008-deletion-metadata-backup-horizon.md) fixes deletion-metadata retention at the backup horizon (currently 90 days after deletion), defers compliance holds, and explicitly authorizes completion of the synthetic web/health-API deployment. Content deletion inside retained backups remains a separate real-data gate. Rollout progress is recorded in the September 25 deployment record.
@@ -8,7 +14,7 @@
 
 Step 1 is complete: the [synthetic website](https://qm.ejtbrown.com) and [health-only API](https://qm.ejtbrown.com/api/health) are live through the automatic GitHub `dev` → CodeBuild/CodePipeline release path. The next functional milestone is a non-AI phone-to-desktop asset/photo workflow. See the ordered gates below.
 
-## Latest verified cloud state — 2026-09-25
+## Earlier foundation release — 2026-09-25
 
 The first successful exact-commit release is `194680f3c140dfd86c9c6b28fc17281a9be6c3df`, pipeline execution `3621db62-16ea-48e2-9699-900a86721dcb`. Independent checks verified health SHA, static hashes, HTTPS/security headers, WAF, denied direct origins and desktop/mobile-viewport Chromium behavior. GitHub Actions also passed on CodeBuild via workflow dispatch; automatic CodePipeline push delivery was observed. See the [September 25 deployment record](DEPLOYMENT-2026-09-25.md), including the narrower evidence boundary for Actions push/PR events. This remains a synthetic preview with no authentication, asset persistence or AI.
 
@@ -20,7 +26,7 @@ The owner accepted weekly historical database backups and standard pay-as-you-go
 
 The [foundation record](DEPLOYMENT-2026-09-07.md) and [September 8 hosting/CI record](DEPLOYMENT-2026-09-08.md) remain historical evidence. This remains a synthetic preview, not the complete Quartermaster application.
 
-## Current delivery increment
+## Foundation delivery increment (historical)
 
 `infra/environments/delivery` implements an isolated Terraform backend, private S3 web/artifacts, an IAM/OAC-protected health-only Lambda URL, standard CloudFront/ACM/DNS, a rate-limit web ACL, and separate CodeBuild check/build/deploy roles plus CodePipeline V2. Build scripts validate, package exact-commit checksums, test a published API version, promote the alias, publish the website, and smoke-test; prior live pointers are retained for rollback. Public-fork workflows require approval for every external contributor. The Free subscription bridge has been removed.
 

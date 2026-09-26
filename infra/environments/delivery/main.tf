@@ -73,4 +73,4 @@ output "web_bucket" { value = aws_s3_bucket.delivery["web"].id }
 output "api_function" { value = aws_lambda_function.api.function_name }
 output "api_origin_url" { value = aws_lambda_function_url.api.function_url }
 output "pipeline_name" { value = var.enable_pipeline ? aws_codepipeline.release[0].name : null }
-output "scope" { value = "Synthetic web preview and health-only API; real asset intake and AI remain disabled." }
+output "scope" { value = var.enable_workspace ? "Authenticated synthetic workspace; real asset intake, photos, AI and purge remain disabled." : "Synthetic web preview and health-only API; workspace activation remains disabled." }

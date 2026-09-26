@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export const Identifier = z.uuid();
 
 export const AssetClass = z.enum(['air_conditioner', 'appliance']);
 export const AssetStatus = z.enum([
@@ -23,6 +24,87 @@ export const Asset = z
   })
   .strict();
 export type Asset = z.infer<typeof Asset>;
+
+export const AssetInput = Asset.omit({
+  id: true,
+  tenantId: true,
+  version: true,
+  updatedAt: true,
+});
+export type AssetInput = z.infer<typeof AssetInput>;
+export const Capability = z.enum([
+  'assets:read',
+  'assets:write',
+  'maintenance:write',
+  'audit:read',
+]);
+export type Capability = z.infer<typeof Capability>;
+export const Membership = z
+  .object({
+    tenantId: z.uuid(),
+    name: z.string(),
+    capabilities: z.array(Capability),
+    synthetic: z.boolean(),
+  })
+  .strict();
+export type Membership = z.infer<typeof Membership>;
+export const MaintenanceInput = z
+  .object({
+    title: z.string().trim().min(1).max(240),
+    dueDate: z.iso.date().nullable(),
+    status: z.enum(['open', 'in_progress', 'completed']),
+    notes: z.string().max(4000),
+  })
+  .strict();
+export type MaintenanceInput = z.infer<typeof MaintenanceInput>;
+export const Maintenance = MaintenanceInput.extend({
+  id: z.uuid(),
+  assetId: z.uuid(),
+  version: z.number().int().positive(),
+  updatedAt: z.iso.datetime(),
+});
+export type Maintenance = z.infer<typeof Maintenance>;
+export const ReadingInput = z
+  .object({
+    label: z.string().trim().min(1).max(120),
+    value: z.number().finite().min(-1e12).max(1e12),
+    unit: z.string().trim().min(1).max(40),
+    observedAt: z.iso.datetime(),
+    notes: z.string().max(2000),
+  })
+  .strict();
+export type ReadingInput = z.infer<typeof ReadingInput>;
+export const Reading = ReadingInput.extend({ id: z.uuid(), assetId: z.uuid() });
+export type Reading = z.infer<typeof Reading>;
+export const DraftInput = AssetInput.partial().strict();
+export type DraftInput = z.infer<typeof DraftInput>;
+export const Draft = z
+  .object({
+    id: z.uuid(),
+    version: z.number().int().positive(),
+    content: DraftInput,
+    updatedAt: z.iso.datetime(),
+  })
+  .strict();
+export type Draft = z.infer<typeof Draft>;
+export interface SessionInfo {
+  authenticated: boolean;
+  authenticationEnabled: boolean;
+  actorId?: string;
+  csrfToken?: string;
+  expiresAt?: string;
+  memberships?: Membership[];
+}
+export interface AssetPage {
+  items: Asset[];
+  nextCursor: string | null;
+}
+export interface EstateSummary {
+  assets: number;
+  needsAttention: number;
+  openTasks: number;
+  overdueTasks: number;
+}
 
 // No names, descriptions, images, transcripts, object URLs, or actor emails.
 export const DeletionMetadata = z

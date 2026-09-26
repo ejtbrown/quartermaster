@@ -44,3 +44,30 @@ run "pipeline_roles_and_branch" {
     error_message = "Checks must remain unprivileged and bounded."
   }
 }
+run "identity_is_explicit_and_invitation_only" {
+  command = plan
+  variables { enable_identity = true }
+  assert {
+    condition     = aws_cognito_user_pool.workspace[0].admin_create_user_config[0].allow_admin_create_user_only && aws_cognito_user_pool.workspace[0].mfa_configuration == "ON" && aws_cognito_user_pool.workspace[0].user_pool_tier == "LITE"
+    error_message = "Keep self-signup off and authenticator MFA required without warm infrastructure."
+  }
+  assert {
+    condition     = aws_cognito_user_pool_client.web[0].allowed_oauth_flows == toset(["code"]) && !aws_cognito_user_pool_client.web[0].generate_secret
+    error_message = "The BFF uses a public PKCE client, never implicit tokens or a browser client secret."
+  }
+  assert {
+    condition     = length(aws_iam_role_policy.workspace) == 0 && aws_lambda_function.api.environment[0].variables["QM_WORKSPACE_ENABLED"] == "false"
+    error_message = "Identity provisioning alone cannot enable asset intake or runtime database permissions."
+  }
+}
+run "workspace_keeps_compute_bounded" {
+  command = plan
+  variables {
+    enable_identity  = true
+    enable_workspace = true
+  }
+  assert {
+    condition     = aws_lambda_function.api.timeout == 30 && aws_lambda_function.api.reserved_concurrent_executions == 5 && aws_lambda_function.api.memory_size == 256
+    error_message = "Cold resume must stay bounded without provisioned concurrency or VPC infrastructure."
+  }
+}

@@ -141,6 +141,7 @@ resource "aws_codebuild_project" "release" {
         QM_API_FUNCTION        = aws_lambda_function.api.function_name
         QM_DISTRIBUTION_ID     = aws_cloudfront_distribution.site.id
         QM_PUBLIC_URL          = "https://${local.domain}"
+        QM_EXPECT_WORKSPACE    = tostring(var.enable_workspace)
       } : {}
       content {
         name  = environment_variable.key
