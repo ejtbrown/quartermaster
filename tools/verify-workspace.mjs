@@ -91,7 +91,9 @@ const callback =
     code: 'invalid-deployment-check',
   });
 const wrongBinding = await get(callback, {
-  headers: { cookie: '__Host-qm_login=wrong-binding' },
+  headers: {
+    cookie: '__Host-qm_login=' + randomBytes(32).toString('base64url'),
+  },
 });
 assert.equal(wrongBinding.status, 400);
 uncached(wrongBinding);

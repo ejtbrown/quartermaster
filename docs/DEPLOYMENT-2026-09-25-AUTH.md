@@ -1,6 +1,8 @@
 # Authenticated development workspace deployment — 2026-09-25
 
-Status: infrastructure and database preparation completed; GitHub application release and independent public verification pending. This document will record the first successful release after verification. Later documentation commits may advance the live health SHA without changing functionality.
+Status: **deployed and independently verified** at [qm.ejtbrown.com](https://qm.ejtbrown.com). This record uses the September 25 local development date; AWS completion logs are September 26 UTC. Later documentation commits may advance the live health SHA without changing functionality.
+
+First successful functional release: `220186255d2edd44266010f2cdeb03257faee0dd`, automatically triggered by the GitHub `dev` push. CodePipeline execution `73948525-aff8-48c6-acd0-10b95e8a76aa` succeeded through source, build/test and deployment. CodeBuild build `24176ba0-eccc-42ff-b64d-e1ddc675e48e` and deploy `51db3bae-2a81-474f-9d07-f329566cc2f1` succeeded; the live API alias promoted to version 6. GitHub Actions [run 36206182612](https://github.com/ejtbrown/quartermaster/actions/runs/36206182612) also passed on CodeBuild via workflow dispatch. Automatic CodePipeline push delivery is verified; automatic Actions push/PR events remain unobserved.
 
 ## Scope and account boundary
 
@@ -14,12 +16,13 @@ The owner authorized deployment but explicitly deferred account setup. No Cognit
 - Initial runtime secret populated using the AWS SDK, never Terraform state, CLI arguments or logs. Safe resume supports AWS's first-version CURRENT/PENDING behavior without permitting an ordinary rotation. Secret value and protected environment inputs are not committed.
 - `check` passed for the actual runtime credential. `integration` passed against actual Aurora/Data API: tenant/role isolation, assets/tasks/readings/drafts, JSON/dates, mutation replay/conflicts, stale versions, rollback and membership revocation. Both freshly generated synthetic fixture tenants and their records were removed; no unrelated rows were touched.
 - Aurora remains 0–4 ACU with five-minute auto-pause. Backup cadence, retention, normal CloudFront/WAF and the $100 development budget are unchanged. The extra runtime secret is a billable retained resource, not warm compute.
+- Fresh post-deployment foundation and delivery plans reported no changes. Saved plans are historical evidence, not reusable approvals for future changes.
 
 ## Release validation
 
 Local checks: 122 TypeScript/domain/PostgreSQL/policy tests, two Python operations tests, seven Chromium tests, eleven Terraform mock tests, formatting/types/repository checks and dependency audit passed. Actual compiled API/operator smoke checks run during builds and caught an ESM/SDK packaging issue before release. The standard CloudFront/WAF preflight also passed.
 
-The non-scheduled `tools/verify-workspace.mjs` post-release check verifies exact release/static hashes, unsigned sessions and asset denial, login PKCE and secure browser binding, single-use login state, provider form availability, DynamoDB reads/writes/deletes, security headers, private-origin denial and desktop/mobile-viewport rendering. It deliberately uses an invalid authorization code, so it neither creates an account nor claims successful end-user authentication.
+The non-scheduled `tools/verify-workspace.mjs` post-release check **passed**: exact release/static hashes, unsigned sessions and asset denial, login PKCE and secure browser binding, single-use login state, provider form availability, DynamoDB reads/writes/deletes, security headers, private-origin denial and desktop/mobile-viewport rendering. It deliberately uses an invalid authorization code, so it neither creates an account nor claims successful end-user authentication. Live 1440px/390px screenshots were captured privately; the mobile landing page was visually inspected. Cognito remains invitation-only with required MFA and zero users. IAM simulation allows the exact runtime secret and database operations; actual database integration used the restricted database credential under the operator's AWS principal, not a signed-in Lambda request.
 
 Successful Cognito password/TOTP enrollment, actual signed-in cloud browser saves, physical iPhone/Android testing, measured cold-start recovery and restore drills remain separate checks after the owner authorizes setup. Local browser tests use the actual API and PostgreSQL/RLS with injected identity/session storage, not a live Cognito identity.
 

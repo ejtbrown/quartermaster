@@ -1,6 +1,6 @@
 # Authenticated workspace increment — 2026-09-25
 
-The owner authorized deployment after the local implementation, while explicitly deferring account setup. Identity/runtime infrastructure and the live database schema are now provisioned, and actual Aurora integration tests passed. The application release is in progress; see the [deployment record](DEPLOYMENT-2026-09-25-AUTH.md) for release evidence. No Cognito users, invitations or permanent workspaces have been created. Only synthetic records are allowed.
+The owner authorized deployment after the local implementation, while explicitly deferring account setup. Identity/runtime infrastructure, the database schema and the application are deployed. Actual Aurora integration, the automatic GitHub release pipeline and independent public checks passed; see the [deployment record](DEPLOYMENT-2026-09-25-AUTH.md). No Cognito users, invitations or permanent workspaces have been created. Only synthetic records are allowed; successful end-user login/MFA enrollment remains unverified until account setup.
 
 ## What is implemented
 

@@ -21,14 +21,14 @@ review_scope:
     - 'Resource entries below describe the complete target; implementation_evidence identifies which subset is actually deployed. Proposed resources must not be treated as live inventory.'
     - "Production domain remains undecided; development/testing uses the default profile's account, with a separate production account created only after church acceptance."
 implementation_evidence:
-  active_milestone: '2026-09-25: Step 1 synthetic web/health API deployed through automatic dev-push CodePipeline/CodeBuild; independent HTTPS, artifact and private-origin checks passed'
-  status: 'data/governance and public synthetic preview deployed; authenticated asset intake and AI remain unimplemented'
+  active_milestone: '2026-09-25: authenticated synthetic manual workspace deployed through automatic dev-push CodePipeline; Aurora integration and independent public/provider-entry checks passed'
+  status: 'data/governance, identity and synthetic manual operations deployed; account setup deferred; real data, photos, AI and purge remain disabled'
   source: 'docs/IMPLEMENTATION.md'
   latest_client_decision: '2026-09-25: online-only shared mobile/desktop web accepted; native builds and offline queues deferred; design update only'
-  web: 'apps/web: deployed synthetic estate preview at https://qm.ejtbrown.com; no authentication or persistence'
-  core_api: 'services/core-api: deployed health-only handler, no database calls'
+  web: 'apps/web: invitation-only landing, manual synthetic workspace and sample register deployed at https://qm.ejtbrown.com; no users created'
+  core_api: 'services/core-api: Cognito/BFF sessions, tenant-authorized assets/tasks/readings/drafts/audit; liveness and anonymous requests do not wake the database'
   contracts_and_policy: ['packages/contracts', 'packages/domain']
-  schema: 'db/migrations/0001_asset_foundation.sql; PostgreSQL RLS tests in PGlite'
+  schema: 'Migrations 0001-0003 applied with checksum ledger; forced tenant RLS, restricted runtime role, explicit migration-owner recovery policy; PGlite and live two-tenant Aurora checks passed'
   terraform:
     [
       'infra/bootstrap',
@@ -37,9 +37,10 @@ implementation_evidence:
       'infra/environments/delivery',
     ]
   delivery_state: 'Separate protected dev/delivery.tfstate; application release roles cannot access this or database state.'
-  delivery_plan: 'September 25: publication/CI and two scoped installer/alias-policy corrections applied from reviewed saved plans; no deletions; fresh delivery plan has no changes'
+  delivery_plan: 'September 25: publication/CI, identity and synthetic-workspace plans applied after review; no deletions; fresh post-workspace foundation/delivery plans have no changes'
   delivery_blockers: []
   first_successful_release: '194680f3c140dfd86c9c6b28fc17281a9be6c3df; execution 3621db62-16ea-48e2-9699-900a86721dcb; later documentation commits may advance the live SHA'
+  authenticated_release: '220186255d2edd44266010f2cdeb03257faee0dd; execution 73948525-aff8-48c6-acd0-10b95e8a76aa succeeded; docs/DEPLOYMENT-2026-09-25-AUTH.md; successful user/MFA enrollment deferred with account setup'
   deployed_foundation_resources:
     [
       'database_vpc',
@@ -147,11 +148,11 @@ local_build_hosts:
 components:
   - name: 'web'
     type: frontend
-    lifecycle: local_preview
+    lifecycle: deployed_synthetic_workspace
     source_paths:
       - 'apps/web'
     deployment_paths:
-      - 'infra/modules/edge'
+      - 'infra/environments/delivery'
   - name: 'mobile'
     type: frontend
     lifecycle: deferred_placeholder
@@ -160,11 +161,11 @@ components:
     deployment_paths: []
   - name: 'core-api'
     type: api
-    lifecycle: local_health_only
+    lifecycle: deployed_synthetic_workspace
     source_paths:
       - 'services/core-api'
     deployment_paths:
-      - 'infra/modules/api'
+      - 'infra/environments/delivery'
   - name: 'conversation-api'
     type: api
     lifecycle: proposed
@@ -332,9 +333,9 @@ aws_resources:
   - logical_name: 'identity'
     service: 'Amazon Cognito'
     resource_type: 'user pool and application clients'
-    lifecycle: proposed
+    lifecycle: deployed_dev_only_no_users
     source_paths:
-      - 'DESIGN.md'
+      - 'infra/environments/delivery/auth.tf'
     environments:
       - dev
       - production
