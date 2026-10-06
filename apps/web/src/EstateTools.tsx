@@ -661,7 +661,7 @@ function Settings({ base, csrf }: { base: string; csrf: string }) {
               )
             )
               void mutation
-                .save('tenant', 'DELETE', { confirmName: confirmation })
+                .save('tenant/delete', 'POST', { confirmName: confirmation })
                 .then(() => setClosed(true))
                 .catch(() => {});
           }}

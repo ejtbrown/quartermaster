@@ -1,6 +1,6 @@
 # Quartermaster
 
-Quartermaster is a proposed voice-first, cloud-based enterprise asset management system for churches and similarly small operations. One responsive web application serves mobile field capture and desktop estate-wide search, analysis, maintenance planning, insurance, disaster assessment, and accounting exports. The first release is online-only; native applications and offline storage/synchronization are deferred under [decision 0007](docs/decisions/0007-online-only-mobile-web.md). Optional Home Screen installation does not add offline support.
+Quartermaster is a voice-first, cloud-based enterprise asset management system in development for churches and similarly small operations. One responsive web application serves mobile field capture and desktop estate-wide search, analysis, maintenance planning, insurance, disaster assessment, and accounting exports. The first release is online-only; native applications and offline storage/synchronization are deferred under [decision 0007](docs/decisions/0007-online-only-mobile-web.md). Optional Home Screen installation does not add offline support.
 
 Erick Brown initially operates and supports this multi-tenant SaaS. The pilot starts with one church and focuses on air conditioners and appliances, with additional tenants and asset classes supported as it grows. Each church controls its data; privacy and compliance are first-class requirements. Humans are responsible for physical-work safety, with AI providing advisory reminders and recording observations. The first four design decisions were [accepted on September 6, 2026](docs/decisions/0001-pilot-operating-model.md).
 
@@ -21,7 +21,7 @@ The accepted disaster recovery time is 24 hours. Development stays in the curren
 
 ## Build status
 
-The October operational increment replaces the synthetic register with empty ordinary workspaces and connected asset, photo, assisted capture, maintenance, insurance, incident, reporting, rules and administration workflows. See the [current workspace scope and runbook](docs/AUTHENTICATED-WORKSPACE.md) and [implementation/deployment evidence](docs/IMPLEMENTATION.md). The owner authorized an invitation and empty Quartermaster workspace; no demo records are seeded. Human password/TOTP enrollment and real-phone testing remain separate acceptance checks.
+The October operational increment replaces the synthetic register with ordinary workspaces and connected asset, photo, assisted capture, maintenance, insurance, incident, reporting, rules and administration workflows. See the [current workspace scope and runbook](docs/AUTHENTICATED-WORKSPACE.md) and [implementation/deployment evidence](docs/IMPLEMENTATION.md). The approved owner invitation was sent and an empty Quartermaster workspace created; no demo records are seeded. Human password/TOTP enrollment and real-phone testing remain separate acceptance checks.
 
 Deletion metadata follows the backup horizon (currently 90 days after deletion), under [decision 0008](docs/decisions/0008-deletion-metadata-backup-horizon.md). Inaccessible backup copies may remain until expiry; replay deletions before restored access. Compliance holds remain deferred.
 

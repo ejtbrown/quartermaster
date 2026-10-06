@@ -179,7 +179,7 @@ beforeEach(async () => {
 describe('ordinary-tenant features, durable jobs and security boundaries', () => {
   it('closes and purges a tenant without needing a revoked session to finish cleanup', async () => {
     await addAsset();
-    const { item: job } = await call<{ item: Job }>('tenant', 'DELETE', {
+    const { item: job } = await call<{ item: Job }>('tenant/delete', 'POST', {
       confirmName: 'Empty test workspace',
     });
     await expect(call('assets')).rejects.toMatchObject({

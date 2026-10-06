@@ -47,6 +47,30 @@ assert.equal(
     .status,
   401,
 );
+// Prove each write verb reaches application authentication through OAC.
+// No session means none of these requests can mutate a record.
+for (const method of ['POST', 'PATCH', 'DELETE']) {
+  const body = method === 'DELETE' ? undefined : '{}';
+  const response = await get(
+    '/api/v1/tenants/11111111-1111-4111-8111-111111111111/assets',
+    {
+      method,
+      headers: {
+        'content-type': 'application/json',
+        'x-amz-content-sha256': createHash('sha256')
+          .update(body ?? '')
+          .digest('hex'),
+      },
+      ...(body === undefined ? {} : { body }),
+    },
+  );
+  assert.equal(
+    response.status,
+    401,
+    `Private-origin ${method} must reach authentication`,
+  );
+  assert.equal((await response.json()).code, 'sign_in_required');
+}
 const login = await get('/api/auth/login');
 assert.equal(login.status, 302);
 uncached(login);

@@ -60,8 +60,8 @@ implementation_evidence:
   live_checks: '32 control-plane checks pass; read-only Data API query succeeds; first encrypted 90-day backup completed; details in docs/DEPLOYMENT-2026-09-07.md'
   idle_observation: 'CloudWatch ServerlessDatabaseCapacity minimum and maximum 0.0 ACU at 2026-09-07 17:22/17:23/17:24 UTC; writer left idle'
   alert_status: 'confirmed recipient; customer-managed SNS key plus backup/API/worker/DLQ alarms applied; labeled CloudWatch test successfully published to SNS, mailbox receipt not independently verified'
-  cost_allocation_status: 'CostScope not yet exposed by AWS for activation; tag-filtered budget attribution pending'
-  destructive_content_cleanup: 'accepted inaccessible backups until expiry with deletion replay; implemented queued live/version-aware purge and independent on-demand deletion ledger, pending live acceptance'
+  cost_allocation_status: '2026-10-06: CostScope discovered, activated and verified Active; billing-report lag and shared/untaggable charges remain separate'
+  destructive_content_cleanup: 'accepted inaccessible backups until expiry with deletion replay; live isolated probe passed asset/photo/export all-version purge and independent deletion ledger; timed restored-copy replay drill remains outstanding'
 accepted_product_decisions:
   decision_date: '2026-09-06'
   owner: 'Erick Brown'

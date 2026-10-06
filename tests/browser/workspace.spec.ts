@@ -246,6 +246,80 @@ test('assisted capture keeps human review separate and commits components, tasks
   ).toBe(true);
 });
 
+test.describe('Foreground voice with generated test audio', () => {
+  test('loads the real AudioWorklet, transcribes only on request and discards interrupted recording', async ({
+    page,
+  }) => {
+    // This host's headless capture device returns NotSupportedError. Inject
+    // only the device stream; use the real AudioContext/Worklet/PCM path.
+    // Permission prompts and physical microphones remain device acceptance.
+    await page.addInitScript(() => {
+      navigator.mediaDevices.getUserMedia = async () => {
+        const context = new AudioContext();
+        const source = context.createOscillator();
+        const output = context.createMediaStreamDestination();
+        source.connect(output);
+        source.start();
+        return output.stream;
+      };
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Capture', exact: true }).click();
+    await page
+      .getByRole('button', { name: 'Start capture', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Record a voice answer' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Stop and transcribe' }),
+    ).toBeVisible();
+    // Collect several real worklet frames from the generated audio stream.
+    await page.waitForTimeout(500);
+    const audioRequest = page.waitForRequest((request) =>
+      request.url().endsWith('/transcribe'),
+    );
+    await page.getByRole('button', { name: 'Stop and transcribe' }).click();
+    const audio = Buffer.from(
+      (await audioRequest).postDataJSON().pcm as string,
+      'base64',
+    );
+    expect(audio.length).toBeGreaterThan(3200);
+    expect(audio.length).toBeLessThanOrEqual(640000);
+    expect(audio.length % 2).toBe(0);
+    await expect(
+      page.getByRole('textbox', { name: 'Your answer', exact: true }),
+    ).toHaveValue('Test voice observation');
+    expect((await db.query('SELECT id FROM qm.assets')).rows).toHaveLength(0);
+    expect(
+      (await db.query("SELECT id FROM qm.turns WHERE role='transcript'")).rows,
+    ).toHaveLength(1);
+    expect(
+      (await db.query("SELECT id FROM qm.turns WHERE role='user'")).rows,
+    ).toHaveLength(0);
+    await page.getByRole('button', { name: 'Record a voice answer' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Stop and transcribe' }),
+    ).toBeVisible();
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'onLine', {
+        configurable: true,
+        get: () => false,
+      });
+      window.dispatchEvent(new Event('offline'));
+    });
+    await expect(
+      page.getByText(
+        'Recording discarded after an interruption. Tap Record when ready.',
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Stop and transcribe' }),
+    ).toHaveCount(0);
+    expect(
+      (await db.query("SELECT id FROM qm.turns WHERE role='transcript'")).rows,
+    ).toHaveLength(1);
+  });
+});
+
 test('creates an organizational location, edits it with history, and runs an empty report without demo data', async ({
   page,
 }) => {

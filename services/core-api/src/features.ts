@@ -684,7 +684,7 @@ export async function features(
       (key) => readJob(c, key),
     );
   }
-  if (c.route === 'tenant' && c.method === 'DELETE') {
+  if (c.route === 'tenant/delete' && c.method === 'POST') {
     c.requireCapability('workspace:admin');
     recent(c);
     const input = parse(

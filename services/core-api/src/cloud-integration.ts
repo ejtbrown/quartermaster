@@ -213,7 +213,7 @@ export async function cloudIntegration(
       403,
     );
     assert.deepEqual((await call<{ items: unknown[] }>('assets')).items, []);
-    const asset = (
+    let asset = (
       await call<{ item: Asset }>('assets', 'POST', {
         name: 'Temporary acceptance unit',
         assetClass: 'air_conditioner',
@@ -226,8 +226,27 @@ export async function cloudIntegration(
         details: { replacementMinor: 10000 },
       })
     ).item;
+    const {
+      id: assetId,
+      tenantId: _tenantId,
+      version,
+      updatedAt: _updatedAt,
+      ...assetInput
+    } = asset;
+    asset = (
+      await call<{ item: Asset }>(
+        `assets/${assetId}`,
+        'PATCH',
+        {
+          ...assetInput,
+          notes: 'Temporary fixture, edited through the public API',
+        },
+        version,
+      )
+    ).item;
+    assert.equal(asset.version, version + 1);
     console.log(
-      'Live session, CSRF-protected asset write and cross-tenant rejection passed.',
+      'Live session, CSRF-protected asset create/edit and cross-tenant rejection passed.',
     );
     const bytes = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAHUlEQVQokWP4TyJgGNVABGAgRhEyGNVADKB9KAEAr639H8LdEzEAAAAASUVORK5CYII=',
@@ -333,7 +352,7 @@ export async function cloudIntegration(
     const removal = await call<{ item: Job }>(
       'assets/' + asset.id,
       'DELETE',
-      {},
+      undefined,
       asset.version,
     );
     await job(removal.item.id);
@@ -358,6 +377,48 @@ export async function cloudIntegration(
     );
     console.log(
       'Insurance report, checksummed photo export, version-aware purge and independent deletion ledger passed.',
+    );
+    const closed = await call<{ item: Job }>('tenant/delete', 'POST', {
+      confirmName: marker,
+    });
+    await call('assets', 'GET', undefined, undefined, 403);
+    // Access is closed, so completion is checked by this isolated operator
+    // probe, never by reopening a deleted tenant or weakening authorization.
+    let purged = false;
+    for (let i = 0; i < 60; i++) {
+      await delay(3000);
+      const state = await owner.transaction(async (sql) =>
+        sql.query<{ state: string }>(
+          'SELECT state FROM qm.jobs WHERE tenant_id=$1::uuid AND id=$2::uuid',
+          [tenant, closed.item.id],
+        ),
+      );
+      if (state[0]?.state === 'complete') {
+        purged = true;
+        break;
+      }
+    }
+    assert.ok(purged, 'Closed probe workspace did not finish purging');
+    assert.deepEqual(
+      await owner.transaction((sql) =>
+        sql.query('SELECT id FROM qm.tenants WHERE id=$1::uuid', [tenant]),
+      ),
+      [],
+    );
+    assert.ok(
+      (
+        await dynamo.send(
+          new GetCommand({
+            TableName: 'quartermaster-dev-deletions',
+            Key: { pk: tenant, sk: 'tenant#' + tenant },
+            ConsistentRead: true,
+          }),
+        )
+      ).Item,
+      'Workspace deletion ledger missing',
+    );
+    console.log(
+      'Typed-confirmation workspace deletion closed access and completed its independent-ledger purge.',
     );
   } finally {
     await dynamo.send(

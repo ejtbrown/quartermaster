@@ -45,14 +45,21 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     ? AbortSignal.any([init.signal, deadline])
     : deadline;
   const headers = new Headers(init.headers);
+  let body = init.body;
+  if ((init.method ?? 'GET').toUpperCase() === 'DELETE') {
+    // OAC accepts bodyless DELETE; confirmation-bearing actions use POST.
+    if (body != null && body !== '' && body !== '{}')
+      throw new Error('DELETE cannot carry data; use a POST action');
+    body = undefined;
+  }
   if (!['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase())) {
     // CloudFront OAC needs the exact payload hash for the private Lambda URL.
     // All BFF payloads are JSON strings; direct S3 uploads use a separate path.
-    if (init.body != null && typeof init.body !== 'string')
+    if (body != null && typeof body !== 'string')
       throw new Error('API writes require a serialized JSON body');
     const digest = await crypto.subtle.digest(
       'SHA-256',
-      new TextEncoder().encode(init.body ?? ''),
+      new TextEncoder().encode(body ?? ''),
     );
     headers.set(
       'x-amz-content-sha256',
@@ -65,6 +72,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     try {
       const response = await fetch(path, {
         ...init,
+        body: body ?? null,
         headers,
         credentials: 'same-origin',
         cache: 'no-store',
