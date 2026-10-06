@@ -5,35 +5,58 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { chromium } from '@playwright/test';
+
+const require = createRequire(
+  new URL('../services/core-api/package.json', import.meta.url),
+);
+const {
+  CognitoIdentityProviderClient,
+  AdminCreateUserCommand,
+  AdminDeleteUserCommand,
+} = require('@aws-sdk/client-cognito-identity-provider');
+const {
+  DynamoDBClient,
+  DeleteItemCommand,
+} = require('@aws-sdk/client-dynamodb');
 
 assert.equal(process.env.QM_AUTH_LIVE_CHECK, 'development-only');
 const region = 'us-east-2',
   pool = 'us-east-2_yxPPA4BB1',
   origin = 'https://qm.ejtbrown.com';
-function aws(args, input) {
-  // Secrets go through stdin, never command-line arguments, logs or files.
+function aws(args) {
   const output = execFileSync(
     'aws',
-    [
-      ...args,
-      '--profile',
-      'default',
-      '--region',
-      region,
-      '--output',
-      'json',
-      ...(input ? ['--cli-input-json', 'file:///dev/stdin'] : []),
-    ],
+    [...args, '--profile', 'default', '--region', region, '--output', 'json'],
     {
       encoding: 'utf8',
-      ...(input ? { input: JSON.stringify(input) } : {}),
       stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 15000,
     },
   );
   return output.trim() ? JSON.parse(output) : {};
 }
 assert.equal(aws(['sts', 'get-caller-identity']).Account, '264702148921');
+// Keep credentials and test passwords in memory. Opening /dev/stdin through
+// the CLI fails for Node's socket-backed subprocess stdin on this host.
+const resolved = aws([
+  'configure',
+  'export-credentials',
+  '--format',
+  'process',
+]);
+const config = {
+  region,
+  maxAttempts: 1,
+  credentials: {
+    accessKeyId: resolved.AccessKeyId,
+    secretAccessKey: resolved.SecretAccessKey,
+    ...(resolved.SessionToken ? { sessionToken: resolved.SessionToken } : {}),
+  },
+};
+const cognito = new CognitoIdentityProviderClient(config);
+const dynamodb = new DynamoDBClient(config);
 assert.equal(
   (await (await fetch(origin + '/api/health')).json()).release,
   process.env.QM_EXPECTED_RELEASE,
@@ -63,13 +86,15 @@ let created = false,
   browser;
 const authKeys = new Set();
 try {
-  aws(['cognito-idp', 'admin-create-user'], {
-    UserPoolId: pool,
-    Username: email,
-    TemporaryPassword: temporary,
-    MessageAction: 'SUPPRESS',
-    UserAttributes: [{ Name: 'email', Value: email }],
-  });
+  await cognito.send(
+    new AdminCreateUserCommand({
+      UserPoolId: pool,
+      Username: email,
+      TemporaryPassword: temporary,
+      MessageAction: 'SUPPRESS',
+      UserAttributes: [{ Name: 'email', Value: email }],
+    }),
+  );
   created = true;
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({
@@ -171,10 +196,21 @@ try {
   console.log(
     'Subsequent real Cognito password/TOTP sign-in and same-origin reauthentication passed; browser persistent token storage remains empty.',
   );
-} catch {
+} catch (error) {
   // Playwright error call logs can include fill() values. Never print those.
+  // AWS CLI stderr is also potentially sensitive: expose only a standard
+  // exception type or a local input-channel failure, never its message.
+  const diagnostic =
+    typeof error?.stderr === 'string'
+      ? (error.stderr.match(/An error occurred \(([A-Za-z0-9]+)\)/)?.[1] ??
+        (error.stderr.includes('Unable to load paramfile')
+          ? 'CLI input channel unavailable'
+          : 'CLI request failed'))
+      : /^[A-Za-z]+Exception$/.test(error?.name ?? '')
+        ? error.name
+        : 'browser or assertion failure';
   throw new Error(
-    `Live auth acceptance failed during ${stage}; inspect redacted API logs if needed.`,
+    `Live auth acceptance failed during ${stage} (${diagnostic}); inspect redacted API logs if needed.`,
   );
 } finally {
   const cleanupFailures = [];
@@ -186,20 +222,24 @@ try {
   if (created) {
     assert.match(email, /^qm-auth-check-[0-9a-f-]+@example\.invalid$/);
     try {
-      aws(['cognito-idp', 'admin-delete-user'], {
-        UserPoolId: pool,
-        Username: email,
-      });
+      await cognito.send(
+        new AdminDeleteUserCommand({
+          UserPoolId: pool,
+          Username: email,
+        }),
+      );
     } catch {
       cleanupFailures.push(`test identity ${email}`);
     }
   }
   for (const pk of authKeys) {
     try {
-      aws(['dynamodb', 'delete-item'], {
-        TableName: 'quartermaster-dev-sessions',
-        Key: { pk: { S: pk }, sk: { S: 'AUTH' } },
-      });
+      await dynamodb.send(
+        new DeleteItemCommand({
+          TableName: 'quartermaster-dev-sessions',
+          Key: { pk: { S: pk }, sk: { S: 'AUTH' } },
+        }),
+      );
     } catch {
       cleanupFailures.push(`auth row ${pk}`);
     }
