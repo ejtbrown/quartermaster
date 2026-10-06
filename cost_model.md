@@ -2,6 +2,10 @@
 
 Status: design estimate, not a quote
 
+## Accepted design / same-origin authentication increment — October 6
+
+The first-party Cognito sign-in uses the existing Lambda, on-demand session table and Cognito Lite pool; there is no new always-running service or custom-domain distribution. Fonts are self-hosted, cached assets. One extra standard WAF rate rule limits `/api/auth/flow` to 30 requests per IP per five minutes. At the [published WAF rates](https://aws.amazon.com/waf/pricing/) checked October 6, the fixed ACL/rule component becomes **$7/month** (`$5 + 2 × $1`), an increase of **$1/month** over the earlier one-rule estimate. Ordinary request charges remain additional; no CAPTCHA, fraud-control subscription, managed-rule group or pricing-plan subscription is enabled. Older $6 WAF and $9.92 component examples below predate this increment. The $100 development budget is unchanged.
+
 ## October operational increment
 
 The operational release adds one worker credential, a project-scoped alert encryption key, failure metrics/alarms, SQS, one-time Scheduler tasks, an on-demand deletion ledger, S3 operations and actual AI/speech usage. It adds no NAT, database minimum capacity, provisioned concurrency or continuously running runner. The alert key has a $1/month initial key charge before requests/rotation additions ([KMS pricing](https://aws.amazon.com/kms/pricing/), checked October 6); the extra credential uses the existing Secrets Manager rate assumption below. Do not treat the old $9.92 component illustration as the complete operational stack estimate.

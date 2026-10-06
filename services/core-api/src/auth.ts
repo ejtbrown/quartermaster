@@ -32,6 +32,7 @@ export interface Login {
   verifier: string;
   nonce: string;
   expiresAt: number;
+  direct?: import('./password-auth').LoginFlow;
 }
 export interface AuthStore {
   putLogin(login: Login): Promise<void>;
@@ -130,6 +131,16 @@ export class Auth {
       !/^[0-9a-f-]{36}$/i.test(identity.actorId)
     )
       throw new Problem(401, 'invalid_identity');
+    return this.complete(request, identity, true);
+  }
+  async complete(request: Request, identity: Identity, redirect = false) {
+    if (
+      identity.expiresAt <= this.now() ||
+      identity.authenticatedAt <= 0 ||
+      identity.authenticatedAt > this.now() + 60 ||
+      !/^[0-9a-f-]{36}$/i.test(identity.actorId)
+    )
+      throw new Problem(401, 'invalid_identity');
     const id = opaque();
     const session = {
       actorId: identity.actorId,
@@ -142,13 +153,14 @@ export class Auth {
     if (previous) await this.store.deleteSession(hash(previous));
     await this.store.putSession(hash(id), session);
     return json(
-      303,
-      {},
+      redirect ? 303 : 200,
+      redirect ? {} : { step: 'complete' },
       [
         browserCookie(SESSION, id, session.expiresAt - this.now()),
         browserCookie(FLOW, '', 0),
+        browserCookie('__Host-qm_signin', '', 0),
       ],
-      { location: '/' },
+      redirect ? { location: '/' } : {},
     );
   }
   async session(request: Request): Promise<Session | undefined> {
@@ -172,6 +184,7 @@ export class Auth {
     return json(200, { signedOut: true }, [
       browserCookie(SESSION, '', 0),
       browserCookie(FLOW, '', 0),
+      browserCookie('__Host-qm_signin', '', 0),
     ]);
   }
 }
@@ -296,7 +309,7 @@ export function cognitoExchange(config: AuthConfig) {
     // Tokens (including any refresh token) are never returned to the browser,
     // logged or persisted. Sessions expire in <=1h. Hosted UI may reuse its own
     // SSO cookie; auth_time is retained, never replaced with callback time.
-    // High-risk operations needing recent authentication are not exposed yet.
+    // Retained for in-flight compatibility; new logins use first-party screens.
     return {
       actorId: id.sub,
       nonce: id.nonce,

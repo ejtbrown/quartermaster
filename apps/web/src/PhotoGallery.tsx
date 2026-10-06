@@ -1,3 +1,4 @@
+import { confirmAction } from './ConfirmDialog';
 import { useEffect, useRef, useState } from 'react';
 import type { Job, Media } from '@quartermaster/contracts';
 import { MediaIntent } from '@quartermaster/contracts';
@@ -182,10 +183,11 @@ function Photo({
       )}
       {canDelete && (
         <button
+          className="danger"
           disabled={mutation.busy}
-          onClick={() => {
+          onClick={async () => {
             if (
-              window.confirm(
+              await confirmAction(
                 'Delete this photo and its live originals? Isolated backups expire within 90 days.',
               )
             )
@@ -336,7 +338,7 @@ export function PhotoGallery({
               accept="image/jpeg,image/png,image/webp"
               capture="environment"
               disabled={busy}
-              onChange={(e) => {
+              onChange={async (e) => {
                 setFile(e.target.files?.[0] ?? null);
               }}
             />

@@ -1,5 +1,11 @@
 # Development implementation status
 
+## Accepted design and same-origin sign-in rollout — October 6
+
+The visual guide is now accepted, with the two proposal-framing pages removed (20 pages remain). The responsive client implements the typography/palette, grouped navigation, asset-local sections, help disclosures, structured asset-type fields, human-readable AI proposals, monetary report formatting and keyboard-accessible confirmations. Cognito-backed sign-in, invitations, password recovery and mandatory authenticator verification use first-party screens at `qm.ejtbrown.com/sign-in`; existing credentials remain valid. No sample records are seeded.
+
+Local checks currently pass: 157 unit/domain/database/policy tests and 15 Chromium browser tests, including the existing operational flows and new authentication/UI cases. Eleven Terraform mock checks pass. The reviewed Terraform plan is limited to three in-place updates (client auth flow/session deadline, exact-pool API IAM, and an authentication-only WAF rate rule), with zero creates/deletes/replacements. Deployment and real-provider acceptance are in progress; this section will be reconciled with release evidence before handoff.
+
 ## October 6 operational build and rollout
 
 The owner authorized the real operational structure, an invitation and empty Quartermaster workspace, and inaccessible backup copies until expiry with deletion replay. No seeded demo register remains. The [operational scope/runbook](AUTHENTICATED-WORKSPACE.md) is authoritative over the historical sections below.

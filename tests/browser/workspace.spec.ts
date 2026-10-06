@@ -186,6 +186,12 @@ test.beforeEach(async ({ page }) => {
     while (pending.length) await worker.run(pending.shift()!);
   });
   page.on('dialog', (dialog) => dialog.accept());
+  await page.addLocatorHandler(page.getByRole('dialog'), async () => {
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: /^(Continue|Confirm deletion)$/ })
+      .click();
+  });
 });
 
 test('assisted capture keeps human review separate and commits components, tasks and readings together', async ({
@@ -193,7 +199,7 @@ test('assisted capture keeps human review separate and commits components, tasks
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Capture', exact: true }).click();
+  await page.getByRole('link', { name: 'Capture', exact: true }).click();
   await page
     .getByRole('button', { name: 'Start capture', exact: true })
     .click();
@@ -264,7 +270,7 @@ test.describe('Foreground voice with generated test audio', () => {
       };
     });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Capture', exact: true }).click();
+    await page.getByRole('link', { name: 'Capture', exact: true }).click();
     await page
       .getByRole('button', { name: 'Start capture', exact: true })
       .click();
@@ -324,13 +330,11 @@ test('creates an organizational location, edits it with history, and runs an emp
   page,
 }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Locations', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Add Locations', exact: true })
-    .click();
+  await page.getByRole('link', { name: 'Locations', exact: true }).click();
+  await page.getByRole('button', { name: 'Add location', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Main building');
   await page
-    .getByRole('button', { name: 'Save Locations', exact: true })
+    .getByRole('button', { name: 'Save location', exact: true })
     .click();
   await expect(
     page.getByRole('heading', { name: 'Main building v1' }),
@@ -338,12 +342,12 @@ test('creates an organizational location, edits it with history, and runs an emp
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByLabel('Notes', { exact: true }).fill('North entrance');
   await page
-    .getByRole('button', { name: 'Save Locations', exact: true })
+    .getByRole('button', { name: 'Save location', exact: true })
     .click();
   await expect(
     page.getByRole('heading', { name: 'Main building v2' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: 'Reports', exact: true }).click();
+  await page.getByRole('link', { name: 'Reports', exact: true }).click();
   await page.getByRole('button', { name: 'Run report', exact: true }).click();
   await expect(page.getByText('Preparing report…')).toHaveCount(0);
   expect((await db.query('SELECT id FROM qm.assets')).rows).toHaveLength(0);
@@ -356,6 +360,83 @@ test.afterEach(async () => {
   await db?.close();
 });
 
+test('accepted styling, help, narrow reflow and structured asset types are usable', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.evaluate(() => document.fonts.ready);
+  await expect(
+    page.getByRole('heading', { name: 'Your asset estate' }),
+  ).toBeVisible();
+  expect(
+    await page.locator('h1').evaluate((el) => getComputedStyle(el).fontFamily),
+  ).toContain('Manrope');
+  await page.getByRole('button', { name: 'About Needs attention' }).click();
+  await expect(page.getByRole('note')).toContainText('counted separately');
+  await page.keyboard.press('Escape');
+  await expect(
+    page.getByRole('button', { name: 'About Needs attention' }),
+  ).toBeFocused();
+  await page.screenshot({
+    path: '.local/redesign-register-desktop.png',
+    fullPage: true,
+  });
+  await page.getByRole('link', { name: 'Asset types', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Add asset type', exact: true })
+    .click();
+  await page.getByLabel('Name', { exact: true }).fill('Test generator');
+  await page.getByLabel('Code', { exact: true }).fill('test_generator');
+  await page.getByRole('button', { name: 'Add field', exact: true }).click();
+  await page.getByLabel('Field label', { exact: true }).fill('Output');
+  await page.getByLabel('Field key', { exact: false }).fill('output');
+  await page.getByLabel('Value type').selectOption('number');
+  await page
+    .getByRole('button', { name: 'Save asset type', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Test generator v1' }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page
+    .getByRole('navigation', { name: 'Quick navigation' })
+    .getByRole('link', { name: 'Assets', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'About Open maintenance' }).click();
+  await expect(page.getByRole('note')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: '.local/redesign-register-mobile.png',
+    fullPage: true,
+  });
+});
+
+test('confirmation defaults to cancel, traps focus and can be dismissed with Escape', async ({
+  page,
+}) => {
+  await page.removeLocatorHandler(page.getByRole('dialog'));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Add asset', exact: true }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Unsaved test entry');
+  await page.getByRole('button', { name: 'Close editor', exact: true }).click();
+  const modal = page.getByRole('dialog');
+  await expect(
+    modal.getByRole('button', { name: 'Cancel', exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(modal).not.toBeVisible();
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue(
+    'Unsaved test entry',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Close editor', exact: true }),
+  ).toBeFocused();
+});
+
 test('invitation-only landing page never treats an anonymous visitor as a member', async ({
   page,
 }) => {
@@ -363,7 +444,7 @@ test('invitation-only landing page never treats an anonymous visitor as a member
   await page.goto('/');
   await expect(
     page.getByRole('link', { name: 'Sign in', exact: true }),
-  ).toHaveAttribute('href', '/api/auth/login');
+  ).toHaveAttribute('href', '/sign-in');
   await expect(
     page.getByRole('button', { name: 'Add asset', exact: true }),
   ).toHaveCount(0);
@@ -429,6 +510,10 @@ test('phone viewport saves and resumes drafts, schedules maintenance, records re
     .getByRole('button', { name: 'Draft appliance', exact: true })
     .click();
   await page
+    .getByRole('navigation', { name: 'Asset sections' })
+    .getByRole('button', { name: 'Maintenance', exact: true })
+    .click();
+  await page
     .getByLabel('Task', { exact: true })
     .fill('Replace tubing insulation');
   await page.getByLabel('Due date', { exact: true }).fill('2026-12-31');
@@ -487,6 +572,7 @@ test('read-only memberships have no mutation controls and sign out clears access
   await expect(
     page.getByRole('button', { name: 'View audit history', exact: true }),
   ).toHaveCount(0);
+  await page.getByText('Account & session', { exact: true }).click();
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(
     page.getByRole('link', { name: 'Sign in', exact: true }),
@@ -505,6 +591,7 @@ test('refreshing after a different identity signs in clears the previous private
     [tenant, otherActor, ['assets:read', 'assets:write']],
   );
   session = { ...session!, actorId: otherActor };
+  await page.getByText('Account & session', { exact: true }).click();
   await page
     .getByRole('button', { name: 'Refresh session', exact: true })
     .click();

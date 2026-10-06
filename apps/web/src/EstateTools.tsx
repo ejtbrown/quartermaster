@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { confirmAction } from './ConfirmDialog';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import { Capability } from '@quartermaster/contracts';
 import type {
@@ -12,6 +14,19 @@ import { Feedback, useSave } from './Workspace';
 import { RecordsPanel } from './RecordsPanel';
 import { CapturePanel } from './CapturePanel';
 import { JobStatus } from './PhotoGallery';
+import { Icon, Field } from './ui';
+const capabilityLabels: Record<string, string> = {
+  'assets:read': 'View assets and estate records',
+  'assets:write': 'Add and edit assets',
+  'maintenance:write': 'Manage maintenance tasks',
+  'audit:read': 'View audit history',
+  'assets:delete': 'Delete assets and photos',
+  'records:write': 'Manage locations, types and related records',
+  'finance:write': 'Manage financial and insurance records',
+  'rules:write': 'Manage business rules',
+  'exports:read': 'Run reports and export data',
+  'workspace:admin': 'Administer workspace and team access',
+};
 import {
   PageControls,
   RecordSelect,
@@ -24,20 +39,25 @@ export function EstateTools({
   membership,
   csrf,
   children,
+  navigationTarget,
 }: {
   membership: Membership;
   csrf: string;
   actorId: string;
   children: ReactNode;
+  navigationTarget: HTMLElement | null;
 }) {
   const [tab, setTab] = useState('Assets');
+  const activeTab = useRef(tab);
+  activeTab.current = tab;
+  const [menuOpen, setMenuOpen] = useState(false);
   const base = `/api/v1/tenants/${membership.tenantId}/`;
   const tabs = [
     'Assets',
     ...(membership.capabilities.includes('assets:write') ? ['Capture'] : []),
-    'Work',
+    'Maintenance',
     'Locations',
-    'Types',
+    'Asset types',
     'Insurance',
     'Incidents',
     'Accounting',
@@ -50,38 +70,142 @@ export function EstateTools({
   ];
   const groups: Record<string, RecordKind[]> = {
     Locations: ['locations'],
-    Types: ['types'],
+    'Asset types': ['types'],
     Insurance: ['policies'],
     Incidents: ['incidents', 'assessments'],
     Accounting: ['books', 'transactions', 'valuations'],
     Rules: ['rules', 'views'],
   };
-  return (
+  const slug = (name: string) => name.toLowerCase().replaceAll(' ', '-');
+  useEffect(() => {
+    const change = async (guard = false) => {
+      const name =
+        tabs.find((t) => '#' + slug(t) === window.location.hash) ?? 'Assets';
+      if (
+        guard &&
+        name !== activeTab.current &&
+        document.querySelector('[data-dirty="true"],[data-unsaved-editor]') &&
+        !(await confirmAction('Change section? Unsaved input will be lost.'))
+      ) {
+        window.history.pushState(null, '', '#' + slug(activeTab.current));
+        return;
+      }
+      setTab(name);
+    };
+    void change();
+    const back = () => void change(true);
+    window.addEventListener('popstate', back);
+    return () => window.removeEventListener('popstate', back);
+  }, [membership.tenantId]);
+  const icons: Record<string, string> = {
+    Assets: 'assets',
+    Capture: 'mic',
+    Maintenance: 'work',
+    Locations: 'location',
+    Insurance: 'shield',
+    Incidents: 'alert',
+    Accounting: 'report',
+    Reports: 'report',
+    'Asset types': 'assets',
+    Rules: 'settings',
+    Activity: 'clock',
+    Team: 'team',
+    Settings: 'settings',
+  };
+  const navigate = async (name: string) => {
+    if (
+      tab !== name &&
+      document.querySelector('[data-dirty="true"],[data-unsaved-editor]') &&
+      !(await confirmAction(
+        'Change section? Unsaved input in this form will be lost.',
+      ))
+    )
+      return;
+    setTab(name);
+    setMenuOpen(false);
+    window.history.pushState(null, '', '#' + slug(name));
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLElement>('#main')?.focus(),
+    );
+  };
+  const link = (name: string) => (
+    <a
+      key={name}
+      href={'#' + slug(name)}
+      aria-current={tab === name ? 'page' : undefined}
+      onClick={(event) => {
+        event.preventDefault();
+        navigate(name);
+      }}
+    >
+      <Icon name={icons[name] ?? 'assets'} />
+      <span>{name}</span>
+    </a>
+  );
+  const navigation = (
     <>
-      <nav className="estate-nav" aria-label="Estate tools">
-        {tabs.map((name) => (
-          <button
-            key={name}
-            aria-current={tab === name ? 'page' : undefined}
-            onClick={() => {
-              if (
-                tab !== name &&
-                window.confirm(
-                  'Change section? Save any unfinished form before leaving.',
-                )
-              )
-                setTab(name);
-            }}
-          >
-            {name}
-          </button>
+      <button
+        type="button"
+        className="mobile-menu-toggle"
+        aria-expanded={menuOpen}
+        aria-controls="estate-navigation"
+        onClick={() => setMenuOpen(!menuOpen)}
+      >
+        <Icon name={menuOpen ? 'close' : 'menu'} />
+        {menuOpen ? 'Close menu' : 'Menu'}
+      </button>
+      <nav
+        id="estate-navigation"
+        className={`estate-nav ${menuOpen ? 'is-open' : ''}`}
+        aria-label="Estate tools"
+      >
+        {Object.entries({
+          Everyday: ['Assets', 'Capture', 'Maintenance', 'Locations'],
+          Planning: ['Insurance', 'Incidents', 'Accounting', 'Reports'],
+          Manage: ['Asset types', 'Rules', 'Activity', 'Team', 'Settings'],
+        }).map(([group, names]) => (
+          <div className="nav-group" key={group}>
+            <p className="nav-group-label">{group}</p>
+            {names.filter((name) => tabs.includes(name)).map(link)}
+          </div>
         ))}
       </nav>
+      <nav className="mobile-bottom-nav" aria-label="Quick navigation">
+        {['Assets', 'Capture', 'Maintenance']
+          .filter((name) => tabs.includes(name))
+          .map(link)}
+        <button
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls="estate-navigation"
+          onClick={async () => {
+            setMenuOpen(!menuOpen);
+            window.scrollTo({ top: 0 });
+          }}
+        >
+          <Icon name="menu" />
+          <span>More</span>
+        </button>
+      </nav>
+    </>
+  );
+  return (
+    <>
+      {navigationTarget ? createPortal(navigation, navigationTarget) : null}
+      {tab !== 'Assets' && (
+        <div className="section-context">
+          <span className="eyebrow">{membership.name}</span>
+          <span className="section-context-label">
+            <Icon name={icons[tab] ?? 'assets'} />
+            {tab}
+          </span>
+        </div>
+      )}
       {tab === 'Assets' ? (
         children
       ) : tab === 'Capture' ? (
         <CapturePanel base={base} csrf={csrf} membership={membership} />
-      ) : tab === 'Work' ? (
+      ) : tab === 'Maintenance' ? (
         <>
           <WorkPanel base={base} csrf={csrf} membership={membership} />
           <RecordsPanel
@@ -236,7 +360,7 @@ function Reports({ base, csrf }: { base: string; csrf: string }) {
     <section className="panel">
       <h1>Reports and portable exports</h1>
       <p>
-        Values marked “Minor” are integer US cents. Accounting uses
+        Financial amounts are shown in US dollars. Accounting uses
         completed-month straight-line estimates; confirm your accounting policy
         before filing.
       </p>
@@ -245,7 +369,7 @@ function Reports({ base, csrf }: { base: string; csrf: string }) {
           Report
           <select
             value={kind}
-            onChange={(e) => {
+            onChange={async (e) => {
               setKind(e.target.value);
               setRows([]);
               setCursor(null);
@@ -265,24 +389,23 @@ function Reports({ base, csrf }: { base: string; csrf: string }) {
             ))}
           </select>
         </label>
-        <label>
-          As of
+        <Field label="As of" help="asOf">
           <input
             type="date"
             value={asOf}
-            onChange={(e) => {
+            onChange={async (e) => {
               setAsOf(e.target.value);
               setCursor(null);
               setRows([]);
               setTotals({});
             }}
           />
-        </label>
+        </Field>
         <label>
           Asset search
           <input
             value={query}
-            onChange={(e) => {
+            onChange={async (e) => {
               setQuery(e.target.value);
               setCursor(null);
               setRows([]);
@@ -306,7 +429,11 @@ function Reports({ base, csrf }: { base: string; csrf: string }) {
         )}
       </div>
       <div className="actions">
-        <button disabled={busy} onClick={() => void report()}>
+        <button
+          className="primary"
+          disabled={busy}
+          onClick={() => void report()}
+        >
           Run report
         </button>
         {cursor && (
@@ -338,7 +465,10 @@ function Reports({ base, csrf }: { base: string; csrf: string }) {
         <p>
           Loaded-row totals:{' '}
           {Object.entries(totals)
-            .map(([k, v]) => `${title(k)}: ${v.toLocaleString()}`)
+            .map(
+              ([k, v]) =>
+                `${title(k.replace('Minor', ''))}: ${k.endsWith('Minor') ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(v / 100) : v.toLocaleString()}`,
+            )
             .join(' · ')}
         </p>
       )}
@@ -348,7 +478,10 @@ function Reports({ base, csrf }: { base: string; csrf: string }) {
           <thead>
             <tr>
               {columns.map((k) => (
-                <th key={k}>{title(k)}</th>
+                <th key={k} scope="col">
+                  {title(k.replace('Minor', ''))}
+                  {k.endsWith('Minor') ? ' (USD)' : ''}
+                </th>
               ))}
             </tr>
           </thead>
@@ -357,9 +490,14 @@ function Reports({ base, csrf }: { base: string; csrf: string }) {
               <tr key={String(r.id ?? i)}>
                 {columns.map((k) => (
                   <td key={k}>
-                    {typeof r[k] === 'object'
-                      ? JSON.stringify(r[k])
-                      : String(r[k] ?? '—')}
+                    {k.endsWith('Minor') && typeof r[k] === 'number'
+                      ? new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD',
+                        }).format(r[k] / 100)
+                      : typeof r[k] === 'object'
+                        ? JSON.stringify(r[k])
+                        : String(r[k] ?? '—')}
                   </td>
                 ))}
               </tr>
@@ -480,7 +618,7 @@ function Team({ base, csrf }: { base: string; csrf: string }) {
                   setCaps((old) => choose(old, c, e.target.checked))
                 }
               />
-              {c}
+              {capabilityLabels[c] ?? c}
             </label>
           ))}
         </fieldset>
@@ -516,7 +654,7 @@ function MemberEditor({
     [active, setActive] = useState(member.active);
   const mutation = useSave(base, csrf, after);
   return (
-    <details>
+    <details data-editing-scope>
       <summary>
         {member.email ?? member.id} — {member.active ? 'active' : 'revoked'}
       </summary>
@@ -539,7 +677,7 @@ function MemberEditor({
               )
             }
           />
-          {c}
+          {capabilityLabels[c] ?? c}
         </label>
       ))}
       <button
@@ -654,9 +792,9 @@ function Settings({ base, csrf }: { base: string; csrf: string }) {
           disabled={
             mutation.busy || !settings || confirmation !== settings.name
           }
-          onClick={() => {
+          onClick={async () => {
             if (
-              window.confirm(
+              await confirmAction(
                 'Permanently close this workspace and purge its live data?',
               )
             )

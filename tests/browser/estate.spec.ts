@@ -17,7 +17,7 @@ test('invitation landing contains no synthetic register or nonfunctional control
   ).toBeVisible();
   await expect(
     page.getByRole('link', { name: 'Sign in', exact: true }),
-  ).toHaveAttribute('href', '/api/auth/login');
+  ).toHaveAttribute('href', '/sign-in');
   await expect(
     page.getByRole('button', { name: /sample|preview/i }),
   ).toHaveCount(0);

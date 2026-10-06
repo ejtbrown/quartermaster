@@ -1,3 +1,4 @@
+import { confirmAction } from './ConfirmDialog';
 import { useEffect, useRef, useState } from 'react';
 import type {
   AssetInput,
@@ -12,6 +13,7 @@ import { useSave, Feedback } from './Workspace';
 import { AssetClassSelect, AssetDetailsEditor } from './AssetDetailsEditor';
 import { JobStatus, PhotoGallery } from './PhotoGallery';
 import { PageControls, usePage, title } from './estate-ui';
+import { Icon, InfoDisclosure } from './ui';
 type Conversation = {
   id: string;
   version: number;
@@ -181,7 +183,12 @@ function VoiceInput({
           <span role="status">Recording — stops at 20 seconds</span>
         </>
       ) : (
-        <button disabled={starting} onClick={() => void start()}>
+        <button
+          className="primary"
+          disabled={starting}
+          onClick={() => void start()}
+        >
+          <Icon name="mic" />
           {starting ? 'Opening microphone…' : 'Record a voice answer'}
         </button>
       )}
@@ -202,8 +209,26 @@ export function CapturePanel({
     [error, setError] = useState('');
   const mutation = useSave(base, csrf, list.reload);
   return (
-    <section className="panel">
+    <section
+      className="panel capture-panel"
+      data-editing-scope
+      data-unsaved-editor={selected ? '' : undefined}
+    >
       <h1>Assisted asset capture</h1>
+      <div className="capture-path" aria-label="Capture process">
+        <span>
+          <Icon name="mic" />
+          Describe
+        </span>
+        <span>
+          <Icon name="camera" />
+          Photograph
+        </span>
+        <span>
+          <Icon name="check" />
+          Review &amp; save
+        </span>
+      </div>
       <p>
         Stay online. AI organizes volunteered observations; it does not
         authorize work or direct hazardous inspections. People are responsible
@@ -237,9 +262,9 @@ export function CapturePanel({
                 {c.draft.name || 'Unfinished capture'} · {c.id.slice(0, 8)}
               </button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (
-                    window.confirm(
+                    await confirmAction(
                       'Delete this private capture and all its photos?',
                     )
                   )
@@ -264,9 +289,9 @@ export function CapturePanel({
             initial={selected}
           />
           <button
-            onClick={() => {
+            onClick={async () => {
               if (
-                window.confirm(
+                await confirmAction(
                   'Leave capture? Only server-saved input will remain.',
                 )
               ) {
@@ -370,7 +395,7 @@ function CaptureSession({
         <input
           type="checkbox"
           checked={speech}
-          onChange={(e) => {
+          onChange={async (e) => {
             setSpeech(e.target.checked);
             if (!e.target.checked && 'speechSynthesis' in window)
               speechSynthesis.cancel();
@@ -445,19 +470,69 @@ function CaptureSession({
         canWrite
         canDelete={membership.capabilities.includes('assets:delete')}
       />
-      <h2>Review before saving</h2>
+      <div className="label-text">
+        <h2>Review before saving</h2>
+        <InfoDisclosure label="AI suggestions">
+          AI output is a suggestion, not a saved record. Applying it fills the
+          review form. Check the facts, photographs, dates and units before
+          creating the asset.
+        </InfoDisclosure>
+      </div>
       {conversation.proposal && (
         <>
           <details>
             <summary>Latest AI proposal</summary>
-            <pre>{JSON.stringify(conversation.proposal, null, 2)}</pre>
+            <div className="proposal-preview">
+              <span className="badge ai">AI suggestion</span>
+              <dl>
+                {Object.entries(conversation.proposal.fields)
+                  .filter(
+                    ([, value]) =>
+                      value !== null && value !== undefined && value !== '',
+                  )
+                  .map(([key, value]) => (
+                    <div key={key}>
+                      <dt>{title(key)}</dt>
+                      <dd>{String(value)}</dd>
+                    </div>
+                  ))}
+              </dl>
+              <h3>Proposed maintenance</h3>
+              <ul>
+                {conversation.proposal.maintenance.map((task, index) => (
+                  <li key={index}>
+                    {task.title} · due {task.dueDate ?? 'not set'}
+                    {task.notes && <p>{task.notes}</p>}
+                  </li>
+                ))}
+              </ul>
+              <h3>Proposed readings</h3>
+              <ul>
+                {conversation.proposal.readings.map((reading, index) => (
+                  <li key={index}>
+                    {reading.label}: {reading.value} {reading.unit}
+                  </li>
+                ))}
+              </ul>
+              <h3>Components &amp; access</h3>
+              <ul>
+                {conversation.proposal.components?.map((component, index) => (
+                  <li key={index}>
+                    {component.name}
+                    {component.accessConstraints && (
+                      <p>{component.accessConstraints}</p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </details>
           <button
-            onClick={() => {
+            onClick={async () => {
               if (
-                !window.confirm(
+                !(await confirmAction(
                   'Apply the latest proposed fields, tasks and readings to the review form? This replaces the corresponding unsaved edits.',
-                )
+                ))
               )
                 return;
               const p = conversation.proposal!;
@@ -510,7 +585,7 @@ function CaptureSession({
                       ? 160
                       : 120
               }
-              onChange={(e) => {
+              onChange={async (e) => {
                 setDraft((old) => ({ ...old, [k]: e.target.value }));
                 setConfirmed(false);
               }}
@@ -543,7 +618,7 @@ function CaptureSession({
             Task
             <input
               value={t.title}
-              onChange={(e) => {
+              onChange={async (e) => {
                 setTasks((old) =>
                   old.map((v, j) =>
                     j === i ? { ...v, title: e.target.value } : v,
@@ -558,7 +633,7 @@ function CaptureSession({
             <input
               type="date"
               value={t.dueDate ?? ''}
-              onChange={(e) => {
+              onChange={async (e) => {
                 setTasks((old) =>
                   old.map((v, j) =>
                     j === i ? { ...v, dueDate: e.target.value || null } : v,
@@ -572,7 +647,7 @@ function CaptureSession({
             Task notes
             <textarea
               value={t.notes}
-              onChange={(e) => {
+              onChange={async (e) => {
                 setTasks((old) =>
                   old.map((v, j) =>
                     j === i ? { ...v, notes: e.target.value } : v,
@@ -583,7 +658,7 @@ function CaptureSession({
             />
           </label>
           <button
-            onClick={() => {
+            onClick={async () => {
               setTasks((old) => old.filter((_, j) => j !== i));
               setConfirmed(false);
             }}
@@ -594,7 +669,7 @@ function CaptureSession({
       ))}
       {membership.capabilities.includes('maintenance:write') && (
         <button
-          onClick={() => {
+          onClick={async () => {
             setTasks((old) => [
               ...old,
               { title: '', dueDate: null, status: 'open', notes: '' },
@@ -615,7 +690,7 @@ function CaptureSession({
                 <input
                   type={k === 'value' ? 'number' : 'text'}
                   value={r[k]}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     setReadings((old) =>
                       old.map((v, j) =>
                         i === j
@@ -636,7 +711,7 @@ function CaptureSession({
             ),
           )}
           <button
-            onClick={() => {
+            onClick={async () => {
               setReadings((old) => old.filter((_, j) => j !== i));
               setConfirmed(false);
             }}
@@ -646,7 +721,7 @@ function CaptureSession({
         </div>
       ))}
       <button
-        onClick={() => {
+        onClick={async () => {
           setReadings((old) => [
             ...old,
             {
@@ -672,7 +747,7 @@ function CaptureSession({
                 {title(key)}
                 <input
                   value={component[key]}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     setComponents((old) =>
                       old.map((v, j) =>
                         j === i ? { ...v, [key]: e.target.value } : v,
@@ -685,7 +760,7 @@ function CaptureSession({
             ),
           )}
           <button
-            onClick={() => {
+            onClick={async () => {
               setComponents((old) => old.filter((_, j) => j !== i));
               setConfirmed(false);
             }}
@@ -696,7 +771,7 @@ function CaptureSession({
       ))}
       {membership.capabilities.includes('records:write') && (
         <button
-          onClick={() => {
+          onClick={async () => {
             setComponents((old) => [
               ...old,
               { name: '', kind: '', accessConstraints: '', notes: '' },

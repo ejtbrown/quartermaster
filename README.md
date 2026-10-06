@@ -12,6 +12,7 @@ The accepted disaster recovery time is 24 hours. Development stays in the curren
 
 ## Design set
 
+- [Accepted visual style guide (PDF)](docs/design/Quartermaster-Visual-Style-Guide-v1.pdf) — v1.0, adopted October 6, 2026; 20 pages of typography, color, component, help, responsive and accessibility standards. Editable source and font licenses are retained beside it.
 - [End-to-end product and technical design](DESIGN.md)
 - [AWS inventory](inventory.yaml)
 - [AWS cost model](cost_model.md)
@@ -20,6 +21,8 @@ The accepted disaster recovery time is 24 hours. Development stays in the curren
 - [Rollout, rollback, and recovery runbook](RUNBOOK_ROLLOUT.md)
 
 ## Build status
+
+The accepted visual system is implemented in the responsive client, with self-hosted Manrope/Source Sans 3, grouped navigation, explanatory help, asset sections, structured asset-type forms and accessible confirmation dialogs. First-party sign-in at `/sign-in` keeps the browser on `qm.ejtbrown.com` for passwords, invitations, TOTP enrollment/verification, recovery and reauthentication; Cognito remains the identity provider. Existing passwords and authenticators remain valid. See the current evidence in `docs/IMPLEMENTATION.md` before treating source as deployed.
 
 The October operational increment replaces the synthetic register with ordinary workspaces and connected asset, photo, assisted capture, maintenance, insurance, incident, reporting, rules and administration workflows. See the [current workspace scope and runbook](docs/AUTHENTICATED-WORKSPACE.md) and [implementation/deployment evidence](docs/IMPLEMENTATION.md). The approved owner invitation was sent and an empty Quartermaster workspace created; no demo records are seeded. Human password/TOTP enrollment and real-phone testing remain separate acceptance checks.
 

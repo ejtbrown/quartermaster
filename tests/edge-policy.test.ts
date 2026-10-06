@@ -11,6 +11,25 @@ function fixture() {
     DefaultAction: { Allow: {} },
     Rules: [
       {
+        Name: 'AuthenticationRateLimit',
+        Action: { Block: {} },
+        Statement: {
+          RateBasedStatement: {
+            Limit: 30,
+            AggregateKeyType: 'IP',
+            EvaluationWindowSec: 300,
+            ScopeDownStatement: {
+              ByteMatchStatement: {
+                SearchString: Buffer.from('/api/auth/flow').toString('base64'),
+                FieldToMatch: { UriPath: {} },
+                TextTransformations: [{ Priority: 0, Type: 'NONE' }],
+                PositionalConstraint: 'EXACTLY',
+              },
+            },
+          },
+        },
+      },
+      {
         Name: 'PerIPRateLimit',
         Action: { Block: {} },
         Statement: {

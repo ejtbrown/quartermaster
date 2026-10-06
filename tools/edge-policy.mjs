@@ -10,10 +10,34 @@ export function assertStandardEdge(distribution, webAcl) {
   assert.deepEqual(webAcl.DefaultAction, { Allow: {} });
   assert.equal(
     webAcl.Rules.length,
-    1,
+    2,
     'Extra firewall rules require cost/security review',
   );
-  const rule = webAcl.Rules[0];
+  const authRule = webAcl.Rules.find(
+    (rule) => rule.Name === 'AuthenticationRateLimit',
+  );
+  assert.ok(
+    authRule,
+    'First-party authentication needs its dedicated rate limit',
+  );
+  assert.deepEqual(authRule.Action, { Block: {} });
+  assert.deepEqual(authRule.Statement, {
+    RateBasedStatement: {
+      Limit: 30,
+      AggregateKeyType: 'IP',
+      EvaluationWindowSec: 300,
+      ScopeDownStatement: {
+        ByteMatchStatement: {
+          SearchString: Buffer.from('/api/auth/flow').toString('base64'),
+          FieldToMatch: { UriPath: {} },
+          TextTransformations: [{ Priority: 0, Type: 'NONE' }],
+          PositionalConstraint: 'EXACTLY',
+        },
+      },
+    },
+  });
+  const rule = webAcl.Rules.find((rule) => rule.Name === 'PerIPRateLimit');
+  assert.ok(rule);
   assert.equal(rule.Name, 'PerIPRateLimit');
   assert.deepEqual(rule.Action, { Block: {} });
   assert.deepEqual(rule.Statement, {

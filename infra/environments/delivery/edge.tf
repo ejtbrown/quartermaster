@@ -24,6 +24,40 @@ resource "aws_wafv2_web_acl" "site" {
   default_action {
     allow {}
   }
+  # A separate, narrowly scoped limit protects first-party password/MFA flows.
+  # This adds one standard WAF rule (~$1/month), not a subscription or warm service.
+  rule {
+    name     = "AuthenticationRateLimit"
+    priority = 0
+    action {
+      block {}
+    }
+    statement {
+      rate_based_statement {
+        limit                 = 30
+        aggregate_key_type    = "IP"
+        evaluation_window_sec = 300
+        scope_down_statement {
+          byte_match_statement {
+            positional_constraint = "EXACTLY"
+            search_string         = "/api/auth/flow"
+            field_to_match {
+              uri_path {}
+            }
+            text_transformation {
+              priority = 0
+              type     = "NONE"
+            }
+          }
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "quartermaster-dev-auth-rate-limit"
+      sampled_requests_enabled   = false
+    }
+  }
   rule {
     name     = "PerIPRateLimit"
     priority = 1

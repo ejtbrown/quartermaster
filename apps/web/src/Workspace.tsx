@@ -1,3 +1,4 @@
+import { confirmAction } from './ConfirmDialog';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { AssetInput } from '@quartermaster/contracts';
@@ -17,6 +18,7 @@ import { AssetExtras } from './AssetExtras';
 import { PhotoGallery } from './PhotoGallery';
 import { AssetDetailsEditor, AssetClassSelect } from './AssetDetailsEditor';
 import { RecordSelect } from './estate-ui';
+import { Brand, EmptyState, Icon, InfoDisclosure } from './ui';
 
 const labels = {
   in_service: 'In service',
@@ -95,6 +97,9 @@ export function useSave(base: string, csrf: string, after: () => void) {
       key.current = null;
       uncertain.current = false;
       setSuccess('Saved on the server.');
+      document.activeElement
+        ?.closest('form,[data-editing-scope]')
+        ?.removeAttribute('data-dirty');
       after();
       return result;
     } catch (error) {
@@ -121,7 +126,7 @@ export function Feedback({
   return (
     <>
       {busy && (
-        <p role="status">
+        <p role="status" className="loading-message">
           Saving… Waiting for server confirmation (up to a minute after idling).
         </p>
       )}
@@ -130,7 +135,12 @@ export function Feedback({
           {error}
         </p>
       )}
-      {success && <p role="status">{success}</p>}
+      {success && (
+        <p role="status" className="success-message">
+          <Icon name="check" />
+          {success}
+        </p>
+      )}
     </>
   );
 }
@@ -140,7 +150,33 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
       initial.memberships?.[0]?.tenantId ?? '',
     );
   const [error, setError] = useState('');
+  const [navigationTarget, setNavigationTarget] = useState<HTMLElement | null>(
+    null,
+  );
   const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    let fullHeight = viewport.height;
+    const resize = () => {
+      if (viewport.height > fullHeight) fullHeight = viewport.height;
+      document.body.classList.toggle(
+        'keyboard-open',
+        viewport.height < fullHeight * 0.75,
+      );
+    };
+    const orient = () => {
+      fullHeight = viewport.height;
+      resize();
+    };
+    viewport.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', orient);
+    return () => {
+      viewport.removeEventListener('resize', resize);
+      window.removeEventListener('orientationchange', orient);
+      document.body.classList.remove('keyboard-open');
+    };
+  }, []);
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
     window.addEventListener('online', update);
@@ -165,9 +201,9 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
   }
   async function logout() {
     if (
-      !window.confirm(
+      !(await confirmAction(
         'Sign out? Any input not saved on the server will be lost.',
-      )
+      ))
     )
       return;
     try {
@@ -181,22 +217,33 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
     }
   }
   return (
-    <div className="app-layout operational">
+    <div
+      className="app-layout operational"
+      onChangeCapture={(event) => {
+        const target = event.target as HTMLElement;
+        target
+          .closest('form:not(.register-heading),[data-editing-scope]')
+          ?.setAttribute('data-dirty', 'true');
+      }}
+    >
+      <a className="skip-link" href="#main">
+        Skip to main content
+      </a>
       <aside className="sidebar" aria-label="Workspace">
-        <a className="brand" href="#main">
-          <span className="brand-mark">Q</span> Quartermaster
-        </a>
-        <p>Your estate workspace</p>
-        <label>
+        <Brand />
+        <label className="workspace-picker">
           Organization
           <select
             aria-label="Organization"
             value={tenantId}
-            onChange={(e) => {
+            onChange={async (e) => {
+              const nextTenant = e.target.value;
               if (
-                window.confirm('Switch workspaces? Unsaved input will be lost.')
+                await confirmAction(
+                  'Switch workspaces? Unsaved input will be lost.',
+                )
               )
-                setTenantId(e.target.value);
+                setTenantId(nextTenant);
             }}
           >
             {session.memberships?.map((m) => (
@@ -206,22 +253,31 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
             ))}
           </select>
         </label>
-        <p>Online only. Save before leaving this tab.</p>
-        <button onClick={() => void refreshSession()}>Refresh session</button>
-        <a
-          href="/api/auth/login?reauth=1"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Sign in again in a new tab
-        </a>
-        <button onClick={() => void logout()}>Sign out</button>
-        <p>
-          Sessions last up to one hour. Refresh this tab’s session after signing
-          in again.
-        </p>
+        <div className="navigation-slot" ref={setNavigationTarget} />
+        <details className="session-tools">
+          <summary>
+            <Icon name="shield" />
+            Account &amp; session
+          </summary>
+          <p>Online only. Save before leaving this tab.</p>
+          <button onClick={() => void refreshSession()}>Refresh session</button>
+          <a
+            className="action quiet"
+            href="/sign-in?reauth=1"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Sign in again in a new tab
+          </a>
+          <button onClick={() => void logout()}>Sign out</button>
+          <p>
+            Sessions last up to one hour. Refresh this tab’s session after
+            signing in again.
+          </p>
+        </details>
+        <span className="environment-badge">Development workspace</span>
       </aside>
-      <main id="main">
+      <main id="main" tabIndex={-1}>
         {!online && (
           <p role="alert" className="error">
             You are offline. Nothing will be queued or saved until you reconnect
@@ -235,6 +291,7 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
             membership={membership}
             csrf={session.csrfToken!}
             actorId={session.actorId!}
+            navigationTarget={navigationTarget}
           >
             <Register membership={membership} csrf={session.csrfToken!} />
           </EstateTools>
@@ -276,6 +333,7 @@ function Register({
   const [selected, setSelected] = useState<Asset | null>(null),
     [creating, setCreating] = useState(false),
     [draft, setDraft] = useState<Draft | null>(null);
+  const [detailTab, setDetailTab] = useState('Overview');
   const [drafts, setDrafts] = useState<Page<Draft>>({
       items: [],
       nextCursor: null,
@@ -370,10 +428,12 @@ function Register({
         {canWrite && (
           <button
             className="primary"
-            onClick={() => {
+            onClick={async () => {
               if (
                 (creating || selected || draft) &&
-                !window.confirm('Open a new asset? Unsaved input will be lost.')
+                !(await confirmAction(
+                  'Open a new asset? Unsaved input will be lost.',
+                ))
               )
                 return;
               setSelected(null);
@@ -381,7 +441,7 @@ function Register({
               setCreating(true);
             }}
           >
-            Add asset
+            <Icon name="plus" /> Add asset
           </button>
         )}
       </header>
@@ -391,11 +451,23 @@ function Register({
           <strong>{summary?.assets ?? '—'}</strong>
         </article>
         <article>
-          <span>Needs attention</span>
+          <span className="label-text">
+            Needs attention{' '}
+            <InfoDisclosure label="Needs attention">
+              Assets explicitly marked as needing attention. Open or overdue
+              maintenance is counted separately.
+            </InfoDisclosure>
+          </span>
           <strong>{summary?.needsAttention ?? '—'}</strong>
         </article>
         <article>
-          <span>Open maintenance</span>
+          <span className="label-text">
+            Open maintenance{' '}
+            <InfoDisclosure label="Open maintenance">
+              Tasks that have not been completed. The overdue count compares
+              their due dates with the current date in UTC.
+            </InfoDisclosure>
+          </span>
           <strong>{summary?.openTasks ?? '—'}</strong>
           <small>{summary?.overdueTasks ?? '—'} overdue (UTC dates)</small>
         </article>
@@ -403,53 +475,90 @@ function Register({
       {(creating || selected || draft) && (
         <section className="editor-panel" aria-label="Asset workspace">
           <button
-            onClick={() => {
+            onClick={async () => {
               if (
-                window.confirm('Close this editor? Unsaved input will be lost.')
+                await confirmAction(
+                  'Close this editor? Unsaved input will be lost.',
+                )
               )
                 close();
             }}
           >
             Close editor
           </button>
-          <AssetEditor
-            key={draft?.id ?? selected?.id ?? 'new'}
-            base={base}
-            csrf={csrf}
-            asset={selected}
-            draft={draft}
-            readOnly={!canWrite}
-            canFinance={membership.capabilities.includes('finance:write')}
-            after={close}
-          />
           {selected && (
-            <PhotoGallery
-              base={base}
-              csrf={csrf}
-              assetId={selected.id}
-              canWrite={canWrite}
-              canDelete={membership.capabilities.includes('assets:delete')}
-            />
+            <>
+              <div className="asset-identity">
+                <span className={`badge ${selected.status}`}>
+                  {labels[selected.status]}
+                </span>
+                <h2>{selected.name}</h2>
+                <p className="muted">
+                  <Icon name="location" /> {selected.location}
+                </p>
+              </div>
+              <nav className="local-tabs" aria-label="Asset sections">
+                {['Overview', 'Photos', 'Maintenance', 'Related records'].map(
+                  (name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      aria-current={detailTab === name ? 'page' : undefined}
+                      onClick={() => setDetailTab(name)}
+                    >
+                      {name}
+                    </button>
+                  ),
+                )}
+              </nav>
+            </>
           )}
-          {selected && (
-            <Observations
-              key={selected.id}
-              asset={selected}
-              base={base}
-              csrf={csrf}
-              capabilities={membership.capabilities}
-              after={changed}
-            />
-          )}
-          {selected && (
-            <AssetExtras
-              key={selected.id}
+          <div hidden={Boolean(selected && detailTab !== 'Overview')}>
+            <AssetEditor
+              key={draft?.id ?? selected?.id ?? 'new'}
               base={base}
               csrf={csrf}
               asset={selected}
-              membership={membership}
+              draft={draft}
+              readOnly={!canWrite}
+              canFinance={membership.capabilities.includes('finance:write')}
               after={close}
             />
+          </div>
+          {selected && (
+            <div hidden={detailTab !== 'Photos'}>
+              <PhotoGallery
+                base={base}
+                csrf={csrf}
+                assetId={selected.id}
+                canWrite={canWrite}
+                canDelete={membership.capabilities.includes('assets:delete')}
+              />
+            </div>
+          )}
+          {selected && (
+            <div hidden={detailTab !== 'Maintenance'}>
+              <Observations
+                key={selected.id}
+                asset={selected}
+                base={base}
+                csrf={csrf}
+                capabilities={membership.capabilities}
+                after={changed}
+              />
+            </div>
+          )}
+          {selected && (
+            <div hidden={detailTab !== 'Related records'}>
+              <AssetExtras
+                key={selected.id}
+                base={base}
+                csrf={csrf}
+                asset={selected}
+                membership={membership}
+                after={close}
+              />
+            </div>
           )}
         </section>
       )}
@@ -490,52 +599,53 @@ function Register({
           <button type="submit" disabled={busy}>
             Search
           </button>
-          <label>
-            Asset class filter
-            <input
+          <div className="filter-extras wide">
+            <AssetClassSelect
+              base={base}
               value={classFilter}
-              placeholder="air_conditioner, appliance…"
-              onChange={(e) => setClassFilter(e.target.value)}
+              onChange={setClassFilter}
+              allowAll
+              label="Asset type"
             />
-          </label>
-          <RecordSelect
-            base={base}
-            kind="locations"
-            label="Location filter"
-            value={locationFilter}
-            onChange={setLocationFilter}
-          />
-          <RecordSelect
-            base={base}
-            kind="views"
-            label="Saved search"
-            value={view}
-            onChange={(id) => {
-              setView(id);
-              if (id)
-                void api<{
-                  content: {
-                    query: string;
-                    status: string;
-                    assetClass: string;
-                    locationId: string | null;
-                  };
-                }>(base + 'records/views/' + id)
-                  .then(({ content: v }) => {
-                    setQuery(v.query);
-                    setFilter(v.status);
-                    setClassFilter(v.assetClass);
-                    setLocationFilter(v.locationId ?? '');
-                    setSearch({
-                      q: v.query,
-                      status: v.status,
-                      assetClass: v.assetClass,
-                      locationId: v.locationId ?? '',
-                    });
-                  })
-                  .catch((e) => setError(messageFor(e)));
-            }}
-          />
+            <RecordSelect
+              base={base}
+              kind="locations"
+              label="Location filter"
+              value={locationFilter}
+              onChange={setLocationFilter}
+            />
+            <RecordSelect
+              base={base}
+              kind="views"
+              label="Saved search"
+              value={view}
+              onChange={(id) => {
+                setView(id);
+                if (id)
+                  void api<{
+                    content: {
+                      query: string;
+                      status: string;
+                      assetClass: string;
+                      locationId: string | null;
+                    };
+                  }>(base + 'records/views/' + id)
+                    .then(({ content: v }) => {
+                      setQuery(v.query);
+                      setFilter(v.status);
+                      setClassFilter(v.assetClass);
+                      setLocationFilter(v.locationId ?? '');
+                      setSearch({
+                        q: v.query,
+                        status: v.status,
+                        assetClass: v.assetClass,
+                        locationId: v.locationId ?? '',
+                      });
+                    })
+                    .catch((e) => setError(messageFor(e)));
+              }}
+            />
+          </div>
         </form>
         {error && (
           <p role="alert" className="empty error">
@@ -547,13 +657,21 @@ function Register({
             Loading… The database may take up to a minute to wake.
           </p>
         )}
-        <div className="table-wrap">
+        <div
+          className="table-wrap"
+          role="region"
+          aria-label="Asset results"
+          tabIndex={0}
+        >
           <table>
+            <caption className="sr-only">
+              Recorded assets matching your search
+            </caption>
             <thead>
               <tr>
-                <th>Asset / Location</th>
-                <th>Status</th>
-                <th>Model / Serial</th>
+                <th scope="col">Asset / Location</th>
+                <th scope="col">Status</th>
+                <th scope="col">Model / Serial</th>
               </tr>
             </thead>
             <tbody>
@@ -562,16 +680,17 @@ function Register({
                   <td>
                     <button
                       className="asset-button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (
                           (creating || selected || draft) &&
-                          !window.confirm(
+                          !(await confirmAction(
                             'Open another asset? Unsaved input will be lost.',
-                          )
+                          ))
                         )
                           return;
                         setCreating(false);
                         setDraft(null);
+                        setDetailTab('Overview');
                         setSelected(asset);
                       }}
                     >
@@ -593,9 +712,19 @@ function Register({
           </table>
         </div>
         {!busy && !assets.length && (
-          <p className="empty">
-            No matching assets. {canWrite ? 'Add an asset to get started.' : ''}
-          </p>
+          <EmptyState
+            title={
+              Object.values(search).some(Boolean)
+                ? 'No matching assets'
+                : 'Your estate starts here'
+            }
+          >
+            {Object.values(search).some(Boolean)
+              ? 'Try a different search or clear a filter.'
+              : canWrite
+                ? 'Add your first asset above, or open Capture to enter details with guided help.'
+                : 'Assets will appear here when your team adds them.'}
+          </EmptyState>
         )}
         {next && (
           <button disabled={busy} onClick={() => void more('assets', next)}>
@@ -610,15 +739,21 @@ function Register({
             Only you can see these drafts. They survive signing out; unsaved
             edits in this tab do not.
           </p>
+          {!drafts.items.length && (
+            <p className="muted">
+              No saved drafts yet. Use “Save draft” when adding an asset to pick
+              it up later.
+            </p>
+          )}
           {drafts.items.map((item) => (
             <p key={item.id}>
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (
                     (creating || selected || draft) &&
-                    !window.confirm(
+                    !(await confirmAction(
                       'Open this draft? Unsaved input will be lost.',
-                    )
+                    ))
                   )
                     return;
                   setSelected(null);
@@ -644,7 +779,7 @@ function Register({
       {membership.capabilities.includes('audit:read') && (
         <section className="editor-panel">
           <button
-            onClick={() => {
+            onClick={async () => {
               void api<NonNullable<typeof audit>>(base + 'audit')
                 .then(setAudit)
                 .catch((error: unknown) => setError(messageFor(error)));
@@ -875,8 +1010,10 @@ function AssetEditor({
             {savedDraft && (
               <button
                 type="button"
-                onClick={() => {
-                  if (window.confirm('Permanently delete this saved draft?'))
+                onClick={async () => {
+                  if (
+                    await confirmAction('Permanently delete this saved draft?')
+                  )
                     void mutation
                       .save(
                         'drafts/' + savedDraft.id,
@@ -898,9 +1035,9 @@ function AssetEditor({
       {asset && mutation.error && (
         <button
           type="button"
-          onClick={() => {
+          onClick={async () => {
             if (
-              window.confirm(
+              await confirmAction(
                 'Discard these edits and reload the current record?',
               )
             )
@@ -1038,7 +1175,7 @@ function Observations({
                     <button
                       key={status}
                       disabled={mutation.busy}
-                      onClick={() => {
+                      onClick={async () => {
                         void mutation
                           .save(
                             `maintenance/${task.id}`,

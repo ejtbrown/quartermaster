@@ -73,11 +73,15 @@ for (const method of ['POST', 'PATCH', 'DELETE']) {
 }
 const login = await get('/api/auth/login');
 assert.equal(login.status, 302);
+assert.equal(login.headers.get('location'), '/sign-in');
 uncached(login);
-const cookie = login.headers
+const flow = await get('/api/auth/flow');
+assert.equal(flow.status, 200);
+uncached(flow);
+const flowCookie = flow.headers
   .getSetCookie()
-  .find((value) => value.startsWith('__Host-qm_login='));
-assert.ok(cookie);
+  .find((value) => value.startsWith('__Host-qm_signin='));
+assert.ok(flowCookie);
 for (const flag of [
   'Secure',
   'HttpOnly',
@@ -85,52 +89,34 @@ for (const flag of [
   'Path=/',
   'Max-Age=600',
 ])
-  assert.ok(cookie.includes(flag), `Login cookie needs ${flag}`);
-assert.ok(!/domain=/i.test(cookie));
-const authorize = new URL(login.headers.get('location'));
-assert.equal(
-  authorize.origin,
-  'https://quartermaster-dev-264702148921.auth.us-east-2.amazoncognito.com',
-);
-assert.equal(authorize.pathname, '/oauth2/authorize');
-assert.equal(authorize.searchParams.get('code_challenge_method'), 'S256');
-assert.equal(authorize.searchParams.get('response_type'), 'code');
-assert.equal(
-  authorize.searchParams.get('redirect_uri'),
-  origin + '/api/auth/callback',
-);
-const provider = await fetch(authorize, {
-  redirect: 'follow',
-  signal: AbortSignal.timeout(45000),
-});
-assert.equal(provider.status, 200);
-assert.ok(
-  (await provider.text()).includes('password'),
-  'Provider sign-in form must be available',
-);
-const callback =
-  '/api/auth/callback?' +
-  new URLSearchParams({
-    state: authorize.searchParams.get('state'),
-    code: 'invalid-deployment-check',
-  });
-const wrongBinding = await get(callback, {
+  assert.ok(flowCookie.includes(flag));
+assert.ok(!/domain=/i.test(flowCookie));
+const challenge = await flow.json();
+assert.equal(challenge.step, 'credentials');
+assert.match(challenge.csrfToken, /^[A-Za-z0-9_-]{43}$/);
+const body = JSON.stringify({ action: 'totp', code: '000000' });
+const options = {
+  method: 'POST',
+  body,
   headers: {
-    cookie: '__Host-qm_login=' + randomBytes(32).toString('base64url'),
+    origin,
+    'content-type': 'application/json',
+    'x-csrf-token': challenge.csrfToken,
+    cookie: flowCookie.split(';')[0],
+    'x-amz-content-sha256': createHash('sha256').update(body).digest('hex'),
   },
+};
+const crossOrigin = await get('/api/auth/flow', {
+  ...options,
+  headers: { ...options.headers, origin: 'https://invalid.example' },
 });
-assert.equal(wrongBinding.status, 400);
-uncached(wrongBinding);
-const failedExchange = await get(callback, {
-  headers: { cookie: cookie.split(';')[0] },
-});
-assert.equal(failedExchange.status, 401);
-uncached(failedExchange);
-assert.ok(!(await failedExchange.text()).includes('invalid-deployment-check'));
-assert.equal(
-  (await get(callback, { headers: { cookie: cookie.split(';')[0] } })).status,
-  400,
-);
+assert.equal(crossOrigin.status, 403);
+const wrongStep = await get('/api/auth/flow', options);
+assert.equal(wrongStep.status, 400);
+assert.equal((await wrongStep.json()).code, 'invalid_fields');
+assert.equal((await get('/api/auth/flow', options)).status, 400);
+// No username/password was submitted; this proves application binding/replay
+// protection, not a successful provider authentication.
 
 const index = await get('/');
 assert.equal(index.status, 200);
@@ -173,7 +159,7 @@ try {
       await page
         .getByRole('link', { name: 'Sign in', exact: true })
         .getAttribute('href'),
-      '/api/auth/login',
+      '/sign-in',
     );
     assert.ok(
       await page.evaluate(
@@ -190,6 +176,27 @@ try {
         .count(),
       0,
     );
+    await page.getByRole('link', { name: 'Sign in', exact: true }).click();
+    await page.getByLabel('Email address', { exact: true }).waitFor();
+    assert.equal(new URL(page.url()).origin, origin);
+    assert.equal(new URL(page.url()).pathname, '/sign-in');
+    await page.evaluate(() => document.fonts.ready);
+    assert.ok(
+      await page.evaluate(
+        () =>
+          document.fonts.check('700 32px Manrope') &&
+          document.fonts.check('400 16px "Source Sans 3"'),
+      ),
+    );
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await page.screenshot({
+      path: `.local/live-signin-${width}.png`,
+      fullPage: true,
+    });
     assert.deepEqual(errors, []);
     await page.close();
   }
@@ -197,5 +204,5 @@ try {
   await browser.close();
 }
 console.log(
-  'Live operational entry verified: exact release/static hashes, anonymous denial, login PKCE/cookie binding/single-use state, provider form, DynamoDB access, security headers, private origins and desktop/mobile-viewport rendering. This check creates no accounts and does not claim successful user/MFA enrollment.',
+  'Live operational entry verified: exact release/static hashes, anonymous denial, same-origin sign-in, cookie/CSRF binding and single-use challenge state, DynamoDB access, security headers, private origins and desktop/mobile-viewport rendering. This check creates no accounts and does not claim successful user/MFA enrollment.',
 );

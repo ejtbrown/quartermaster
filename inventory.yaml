@@ -120,6 +120,9 @@ accepted_infrastructure_decisions:
   recent_snapshot_interval_hours: 12
   historical_snapshot_interval_days: 7
   edge_billing: 'standard CloudFront and WAF pay-as-you-go; accepted 2026-09-24'
+  authentication_ui: 'First-party Cognito-backed screens at qm.ejtbrown.com/sign-in; same-origin BFF; accepted visual design 2026-10-06'
+  authentication_rate_limit: '30 requests per IP per 300 seconds on /api/auth/flow; global 300-request limit retained'
+  visual_style_guide: 'docs/design/Quartermaster-Visual-Style-Guide-v1.pdf; accepted v1.0; 20 pages'
   latest_source: 'docs/decisions/0006-tiered-backups-and-standard-edge.md'
   destructive_cleanup_enabled: false
   deletion_policy: 'purge live content including resized photos and cached exports; retain minimal metadata/timestamp for backup horizon; inaccessible backup copies may expire normally, with deletion replay before restored access'

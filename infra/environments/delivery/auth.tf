@@ -54,7 +54,8 @@ resource "aws_cognito_user_pool_client" "web" {
   logout_urls                          = ["https://${local.domain}/"]
   prevent_user_existence_errors        = "ENABLED"
   enable_token_revocation              = true
-  explicit_auth_flows                  = ["ALLOW_REFRESH_TOKEN_AUTH"]
+  explicit_auth_flows                  = ["ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]
+  auth_session_validity                = 10
   access_token_validity                = 1
   id_token_validity                    = 1
   refresh_token_validity               = 1
@@ -87,6 +88,11 @@ resource "aws_iam_role_policy" "workspace" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["cognito-idp:AdminInitiateAuth", "cognito-idp:AdminRespondToAuthChallenge"]
+        Resource = aws_cognito_user_pool.workspace[0].arn
+      },
       {
         Effect   = "Allow"
         Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem"]

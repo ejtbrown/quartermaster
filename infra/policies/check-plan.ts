@@ -343,6 +343,15 @@ export function inspectPlan(input: unknown): string[] {
       case 'aws_cognito_user_pool_client':
         if (
           value.generate_secret !== false ||
+          JSON.stringify(
+            [
+              ...(Array.isArray(value.explicit_auth_flows)
+                ? value.explicit_auth_flows
+                : []),
+            ].sort(),
+          ) !==
+            '["ALLOW_ADMIN_USER_PASSWORD_AUTH","ALLOW_REFRESH_TOKEN_AUTH"]' ||
+          value.auth_session_validity !== 10 ||
           value.allowed_oauth_flows_user_pool_client !== true ||
           JSON.stringify(value.allowed_oauth_flows) !== '["code"]' ||
           JSON.stringify(value.callback_urls) !==

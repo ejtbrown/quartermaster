@@ -48,6 +48,11 @@ it('requires invitation-only MFA identity and exact BFF callbacks', () => {
     ).join(),
   ).toContain('invitation-only');
   const client = {
+    explicit_auth_flows: [
+      'ALLOW_ADMIN_USER_PASSWORD_AUTH',
+      'ALLOW_REFRESH_TOKEN_AUTH',
+    ],
+    auth_session_validity: 10,
     generate_secret: false,
     allowed_oauth_flows_user_pool_client: true,
     allowed_oauth_flows: ['code'],

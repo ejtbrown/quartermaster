@@ -1,3 +1,4 @@
+import { confirmAction } from './ConfirmDialog';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { RecordSchemas } from '@quartermaster/contracts';
@@ -10,6 +11,22 @@ import type {
 import { api, messageFor } from './api';
 import { Feedback, useSave } from './Workspace';
 import { PageControls, RecordSelect, title, usePage } from './estate-ui';
+import { Field, InfoDisclosure, EmptyState, fieldHelp } from './ui';
+const names: Record<string, [string, string]> = {
+  locations: ['Location', 'Locations'],
+  types: ['Asset type', 'Asset types'],
+  components: ['Component', 'Components'],
+  valuations: ['Valuation', 'Valuations'],
+  policies: ['Insurance policy', 'Insurance policies'],
+  incidents: ['Incident', 'Incidents'],
+  assessments: ['Damage assessment', 'Damage assessments'],
+  books: ['Accounting book', 'Accounting books'],
+  transactions: ['Transaction', 'Transactions'],
+  plans: ['Maintenance plan', 'Maintenance plans'],
+  work_logs: ['Work log', 'Work logs'],
+  rules: ['Business rule', 'Business rules'],
+  views: ['Saved search', 'Saved searches'],
+};
 const today = () => new Date().toISOString().slice(0, 10);
 export function recordDefaults(kind: RecordKind): Record<string, unknown> {
   const date = today();
@@ -222,7 +239,7 @@ function RecordEditor({
   return (
     <form className="panel" onSubmit={(e) => void submit(e)}>
       <h3>
-        {record ? 'Edit' : 'Add'} {title(kind)}
+        {record ? 'Edit' : 'Add'} {names[kind]![0].toLowerCase()}
       </h3>
       <fieldset disabled={mutation.busy} className="form-grid">
         <legend className="sr-only">Record fields</legend>
@@ -257,8 +274,7 @@ function RecordEditor({
           const options = choices[kind]?.[key];
           if (options)
             return (
-              <label key={key}>
-                {title(key)}
+              <Field key={key} label={title(key)} help={key}>
                 <select
                   value={String(value ?? '')}
                   onChange={(e) => change(key, e.target.value)}
@@ -269,7 +285,7 @@ function RecordEditor({
                     </option>
                   ))}
                 </select>
-              </label>
+              </Field>
             );
           if (typeof value === 'boolean')
             return (
@@ -305,9 +321,11 @@ function RecordEditor({
           const money = key.endsWith('Minor'),
             date = key.endsWith('On') || key === 'asOf';
           return (
-            <label key={key}>
-              {title(key.replace('Minor', ''))}
-              {money ? ' ($ USD)' : ''}
+            <Field
+              key={key}
+              label={title(key.replace('Minor', '')) + (money ? ' (USD)' : '')}
+              help={key}
+            >
               <input
                 type={
                   money || typeof value === 'number'
@@ -338,11 +356,11 @@ function RecordEditor({
                   )
                 }
               />
-            </label>
+            </Field>
           );
         })}
         <button className="primary" type="submit">
-          Save {title(kind)}
+          Save {names[kind]![0].toLowerCase()}
         </button>
       </fieldset>
       {error && <p role="alert">{error}</p>}
@@ -359,34 +377,134 @@ function JsonField({
   value: unknown[];
   onChange: (v: unknown[]) => void;
 }) {
-  const [text, setText] = useState(JSON.stringify(value, null, 2)),
-    [error, setError] = useState('');
+  const fields = label === 'Fields';
+  const update = (index: number, item: unknown) =>
+    onChange(value.map((v, i) => (i === index ? item : v)));
   return (
-    <label className="wide">
-      {label} (JSON array)
-      <textarea
-        value={text}
-        onChange={(e) => {
-          setText(e.target.value);
-          try {
-            const v: unknown = JSON.parse(e.target.value);
-            if (!Array.isArray(v)) throw new Error();
-            onChange(v);
-            setError('');
-            e.target.setCustomValidity('');
-          } catch {
-            setError('Enter a valid JSON array.');
-            e.target.setCustomValidity('Invalid JSON array');
+    <section className="wide array-editor">
+      <div className="label-text">
+        <h3>{fields ? 'Additional fields' : 'Requested photo views'}</h3>
+        <InfoDisclosure
+          label={fields ? 'Additional fields' : 'Requested photo views'}
+        >
+          {fieldHelp[fields ? 'fields' : 'captureIntents']}
+        </InfoDisclosure>
+      </div>
+      {value.map((item, i) => {
+        const field = item as {
+          key: string;
+          label: string;
+          type: string;
+          required: boolean;
+        };
+        return (
+          <div className="array-row" key={i}>
+            {fields ? (
+              <>
+                <label>
+                  Field label
+                  <input
+                    required
+                    value={field.label}
+                    maxLength={120}
+                    onChange={(e) =>
+                      update(i, { ...field, label: e.target.value })
+                    }
+                  />
+                </label>
+                <label>
+                  Field key
+                  <input
+                    required
+                    pattern="[a-z][a-z0-9_]{0,39}"
+                    value={field.key}
+                    onChange={(e) =>
+                      update(i, { ...field, key: e.target.value })
+                    }
+                  />
+                  <span className="field-hint">
+                    Lowercase letters, numbers, underscores. Keep stable after
+                    use.
+                  </span>
+                </label>
+                <label>
+                  Value type
+                  <select
+                    value={field.type}
+                    onChange={(e) =>
+                      update(i, { ...field, type: e.target.value })
+                    }
+                  >
+                    <option value="text">Text</option>
+                    <option value="number">Number</option>
+                    <option value="boolean">Yes / No</option>
+                  </select>
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={field.required}
+                    onChange={(e) =>
+                      update(i, { ...field, required: e.target.checked })
+                    }
+                  />
+                  Required
+                </label>
+              </>
+            ) : (
+              <label>
+                Photo view
+                <input
+                  required
+                  maxLength={80}
+                  value={String(item)}
+                  list="photo-view-options"
+                  onChange={(e) => update(i, e.target.value)}
+                />
+              </label>
+            )}
+            <button
+              type="button"
+              onClick={() => onChange(value.filter((_, index) => index !== i))}
+            >
+              Remove {fields ? 'field' : 'view'}
+            </button>
+          </div>
+        );
+      })}
+      {!fields && (
+        <datalist id="photo-view-options">
+          {[
+            'nameplate',
+            'whole_unit',
+            'outdoor_coil',
+            'compressor',
+            'damage_detail',
+            'document',
+            'other',
+          ].map((v) => (
+            <option key={v} value={v}>
+              {title(v)}
+            </option>
+          ))}
+        </datalist>
+      )}
+      {value.length < (fields ? 30 : 12) && (
+        <button
+          type="button"
+          onClick={() =>
+            onChange([
+              ...value,
+              fields
+                ? { key: '', label: '', type: 'text', required: false }
+                : '',
+            ])
           }
-        }}
-      />
-      <small>
-        {label === 'Fields'
-          ? 'Example: [{"key":"capacity","label":"Capacity","type":"number","required":false}]'
-          : 'Example: ["nameplate", "whole_unit"]'}
-      </small>
-      {error && <span role="alert">{error}</span>}
-    </label>
+        >
+          Add {fields ? 'field' : 'photo view'}
+        </button>
+      )}
+    </section>
   );
 }
 export function RecordsPanel({
@@ -428,7 +546,7 @@ export function RecordsPanel({
   const canWrite = membership.capabilities.includes(capability);
   return (
     <section className="panel">
-      <h2>{title(kind)}</h2>
+      <h2>{names[kind]![1]}</h2>
       {kind === 'incidents' && (
         <p>
           Creating an incident snapshots the currently recorded estate in its
@@ -445,16 +563,21 @@ export function RecordsPanel({
       <PageControls data={data} />
       {canWrite && (
         <button
-          onClick={() => {
+          className="primary"
+          onClick={async () => {
             setSelected(null);
             setEditing(true);
           }}
         >
-          Add {title(kind)}
+          Add {names[kind]![0].toLowerCase()}
         </button>
       )}
       {!data.busy && !data.items.length && (
-        <p>No {title(kind).toLowerCase()} recorded.</p>
+        <EmptyState title={`No ${names[kind]![1].toLowerCase()} yet`}>
+          {canWrite
+            ? `Add a ${names[kind]![0].toLowerCase()} to organize this part of your estate.`
+            : 'Records will appear here when your team adds them.'}
+        </EmptyState>
       )}
       <div className="record-list">
         {data.items.map((r) => (
@@ -493,7 +616,7 @@ export function RecordsPanel({
               {canWrite && (
                 <>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       setSelected(r);
                       setEditing(true);
                     }}
@@ -501,8 +624,12 @@ export function RecordsPanel({
                     Edit
                   </button>
                   <button
-                    onClick={() => {
-                      if (window.confirm(`Delete this ${title(kind)} record?`))
+                    onClick={async () => {
+                      if (
+                        await confirmAction(
+                          `Delete this ${title(kind)} record?`,
+                        )
+                      )
                         void mutation
                           .save(
                             `records/${kind}/${r.id}`,
@@ -566,8 +693,12 @@ export function RecordsPanel({
             }}
           />
           <button
-            onClick={() => {
-              if (window.confirm('Close the editor and discard unsaved input?'))
+            onClick={async () => {
+              if (
+                await confirmAction(
+                  'Close the editor and discard unsaved input?',
+                )
+              )
                 setEditing(false);
             }}
           >

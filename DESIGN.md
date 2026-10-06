@@ -581,11 +581,11 @@ Time-based evaluation uses one-time EventBridge Scheduler entries created or upd
 
 ### 12.1 Identity and sessions
 
-- Cognito Authorization Code + PKCE for the shared mobile/desktop web client; no implicit flow.
-- Short access tokens and refresh-token rotation/revocation where supported by the selected tier/client.
-- MFA is required for owners/admins and strongly encouraged for others; SMS is a recovery fallback, not the preferred factor.
+- Cognito-backed first-party screens at the application FQDN for the shared mobile/desktop web client. The October 6 implementation uses server-authorized `ADMIN_USER_PASSWORD_AUTH` with mandatory TOTP and a one-use, cookie/CSRF-bound challenge chain. The legacy authorization-code/PKCE callback remains for in-flight compatibility and rollback, not normal navigation. No implicit flow or self-signup.
+- Cognito tokens are verified but not persisted. Application sessions expire within one hour; no silent refresh or durable browser token storage.
+- The current invitation-only workspace requires authenticator-app MFA for every user. SMS is not enabled as a recovery fallback.
 - The OAC uses the origin `Authorization` header for its SigV4 signature, not end-user authentication. Native keychain/keystore clients are outside the release scope.
-- Web uses a backend-for-frontend session: the core API completes the authorization-code flow, keeps refresh/session state server-side with TTL, and sets only an opaque `Secure`, `HttpOnly`, `SameSite` session cookie. State-changing browser requests use CSRF protection. Do not put long-lived tokens in `localStorage`, browser-readable cookies, URLs, or logs.
+- Web uses a backend-for-frontend session: the core API verifies Cognito ID/access tokens, stores the bounded application session and pending challenge state server-side with TTL, and sets only an opaque `Secure`, `HttpOnly`, `SameSite` session cookie. State-changing browser requests use CSRF protection. Passwords, one-time codes, enrollment seeds and identity/refresh tokens are processed transiently, not persisted or logged. Never place tokens in `localStorage`, browser-readable cookies or URLs.
 - Reauthentication is required for export, member/role change, disposal, tenant policy, and support-access approval.
 
 ### 12.2 Data protection

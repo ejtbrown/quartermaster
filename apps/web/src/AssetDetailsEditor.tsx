@@ -1,14 +1,21 @@
+import { useId } from 'react';
 import type { AssetDetails, EstateRecord } from '@quartermaster/contracts';
 import { RecordSelect, title, usePage } from './estate-ui';
+import { Field } from './ui';
 export function AssetClassSelect({
   base,
   value,
   onChange,
+  allowAll = false,
+  label = 'Asset type',
 }: {
   base: string;
   value: string;
   onChange: (v: string) => void;
+  allowAll?: boolean;
+  label?: string;
 }) {
+  const id = useId();
   const data = usePage<EstateRecord>(base + 'records/types');
   const choices = new Map([
     ['air_conditioner', 'Air conditioner'],
@@ -18,11 +25,12 @@ export function AssetClassSelect({
         [String(r.content.code), String(r.content.name)] as [string, string],
     ),
   ]);
-  if (!choices.has(value)) choices.set(value, value);
+  if (value && !choices.has(value)) choices.set(value, value);
   return (
-    <label>
-      Class
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
+        {allowAll && <option value="">All asset types</option>}
         {[...choices].map(([key, label]) => (
           <option key={key} value={key}>
             {label}
@@ -35,7 +43,7 @@ export function AssetClassSelect({
           More classes
         </button>
       )}
-    </label>
+    </div>
   );
 }
 export function AssetDetailsEditor({
@@ -88,8 +96,7 @@ export function AssetDetailsEditor({
           />
         </label>
         {(['condition', 'criticality'] as const).map((key) => (
-          <label key={key}>
-            {title(key)}
+          <Field key={key} label={title(key)} help={key}>
             <select
               value={value[key] ?? (key === 'condition' ? 'unknown' : 'normal')}
               onChange={(e) => update(key, e.target.value)}
@@ -98,10 +105,12 @@ export function AssetDetailsEditor({
                 ? ['unknown', 'good', 'fair', 'poor', 'failed']
                 : ['low', 'normal', 'high', 'critical']
               ).map((v) => (
-                <option key={v}>{v}</option>
+                <option key={v} value={v}>
+                  {title(v)}
+                </option>
               ))}
             </select>
-          </label>
+          </Field>
         ))}
         {(
           [
@@ -139,8 +148,11 @@ export function AssetDetailsEditor({
               'proceedsMinor',
             ] as const
           ).map((key) => (
-            <label key={key}>
-              {title(key.replace('Minor', ''))} ($)
+            <Field
+              key={key}
+              label={title(key.replace('Minor', '')) + ' (USD)'}
+              help={key.replace('Minor', '')}
+            >
               <input
                 type="number"
                 min="0"
@@ -150,10 +162,9 @@ export function AssetDetailsEditor({
                   update(key, Math.round(Number(e.target.value) * 100))
                 }
               />
-            </label>
+            </Field>
           ))}
-          <label>
-            Useful life (months)
+          <Field label="Useful life (months)" help="usefulLifeMonths">
             <input
               type="number"
               min="1"
@@ -167,24 +178,27 @@ export function AssetDetailsEditor({
                 onChange(next);
               }}
             />
-          </label>
-          <label>
-            Cost center
+          </Field>
+          <Field label="Cost center" help="costCenter">
             <input
               maxLength={120}
               value={value.costCenter ?? ''}
               onChange={(e) => update('costCenter', e.target.value)}
             />
-          </label>
-          <label>
+          </Field>
+          <Field label="Capitalized" help="capitalized">
             <input
               type="checkbox"
               checked={value.capitalized ?? false}
               onChange={(e) => update('capitalized', e.target.checked)}
             />
-            Capitalized
-          </label>
+          </Field>
         </fieldset>
+        {!canFinance && (
+          <p className="field-hint wide">
+            Financial fields are read-only for your workspace role.
+          </p>
+        )}
         {fields.map((field) => (
           <label key={field.key}>
             {field.label}

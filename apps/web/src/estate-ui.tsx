@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import type { EstateRecord } from '@quartermaster/contracts';
 import { api, messageFor } from './api';
 export type Page<T> = { items: T[]; nextCursor: string | null };
@@ -83,11 +83,12 @@ export function RecordSelect({
   onChange: (v: string) => void;
   label: string;
 }) {
+  const id = useId();
   const data = usePage<EstateRecord>(`${base}records/${kind}`);
   return (
-    <label>
-      {label}
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">None</option>
         {data.items.map((r) => (
           <option key={r.id} value={r.id}>
@@ -96,7 +97,7 @@ export function RecordSelect({
         ))}
       </select>
       <PageControls data={data} />
-    </label>
+    </div>
   );
 }
 export function downloadBlob(

@@ -5,8 +5,13 @@ import { Operations } from './operations';
 import { Problem, json } from './http';
 import type { Request } from './http';
 import { AwsPlatform } from './platform';
+import { PasswordAuth, cognitoPasswordProvider } from './password-auth';
 
-export function application(auth?: Auth, operations?: Operations) {
+export function application(
+  auth?: Auth,
+  operations?: Operations,
+  passwords?: PasswordAuth,
+) {
   return async (request: Request) => {
     const requestId = randomUUID(),
       path = request.rawPath,
@@ -28,9 +33,16 @@ export function application(auth?: Auth, operations?: Operations) {
         });
       if (!auth || !operations) throw new Problem(404, 'not_found');
       if (path === '/api/auth/login' && method === 'GET')
-        return await auth.login(
-          new URLSearchParams(request.rawQueryString).get('reauth') === '1',
-        );
+        return json(302, {}, [], {
+          location:
+            new URLSearchParams(request.rawQueryString).get('reauth') === '1'
+              ? '/sign-in?reauth=1'
+              : '/sign-in',
+        });
+      if (path === '/api/auth/flow' && passwords) {
+        if (method === 'GET') return await passwords.begin(request);
+        if (method === 'POST') return await passwords.submit(request);
+      }
       if (path === '/api/auth/callback' && method === 'GET')
         return await auth.callback(request);
       if (
@@ -157,8 +169,10 @@ export async function handler(request: Request) {
         )
       )
         return json(503, { code: 'configuration_invalid' });
+      const store = new DynamoAuthStore(table!);
+      const auth = new Auth(config, store, cognitoExchange(config));
       configured = application(
-        new Auth(config, new DynamoAuthStore(table!), cognitoExchange(config)),
+        auth,
         new Operations(
           new DataApiDatabase({
             resourceArn: resourceArn!,
@@ -166,6 +180,12 @@ export async function handler(request: Request) {
             database: 'quartermaster',
           }),
           new AwsPlatform(),
+        ),
+        new PasswordAuth(
+          config.origin,
+          store,
+          cognitoPasswordProvider(config),
+          auth,
         ),
       );
     } else configured = application();

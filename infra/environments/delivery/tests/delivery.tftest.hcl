@@ -24,8 +24,8 @@ run "private_bootstrap" {
     error_message = "Pipeline requires the owner's completed connection."
   }
   assert {
-    condition     = length(aws_wafv2_web_acl.site.rule) == 1 && one(aws_wafv2_web_acl.site.rule).statement[0].rate_based_statement[0].limit == 300
-    error_message = "Preserve the approved one-rule WAF baseline and rate limit."
+    condition     = length(aws_wafv2_web_acl.site.rule) == 2 && toset([for rule in aws_wafv2_web_acl.site.rule : rule.statement[0].rate_based_statement[0].limit]) == toset([30, 300])
+    error_message = "Preserve the global rate limit and the narrower first-party authentication limit."
   }
 }
 run "pipeline_roles_and_branch" {
@@ -54,6 +54,10 @@ run "identity_is_explicit_and_invitation_only" {
   assert {
     condition     = aws_cognito_user_pool_client.web[0].allowed_oauth_flows == toset(["code"]) && !aws_cognito_user_pool_client.web[0].generate_secret
     error_message = "The BFF uses a public PKCE client, never implicit tokens or a browser client secret."
+  }
+  assert {
+    condition     = aws_cognito_user_pool_client.web[0].explicit_auth_flows == toset(["ALLOW_ADMIN_USER_PASSWORD_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"]) && aws_cognito_user_pool_client.web[0].auth_session_validity == 10
+    error_message = "Same-origin authentication is server-authorized; do not expose public password or custom bypass flows."
   }
   assert {
     condition     = length(aws_iam_role_policy.workspace) == 0 && aws_lambda_function.api.environment[0].variables["QM_WORKSPACE_ENABLED"] == "false"

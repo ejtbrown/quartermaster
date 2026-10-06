@@ -1,0 +1,4946 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Quartermaster — Visual Style Guide v1.0 · Accepted</title>
+    <meta name="author" content="Quartermaster" />
+    <meta
+      name="description"
+      content="Accepted design standard for the Quartermaster visual system and user-interface composition."
+    />
+    <style>
+      @font-face {
+        font-family: Manrope;
+        src: url('fonts/Manrope-Variable.ttf');
+        font-weight: 200 800;
+        font-display: block;
+      }
+      @font-face {
+        font-family: 'Source Sans 3';
+        src: url('fonts/SourceSans3-Variable.ttf');
+        font-weight: 200 900;
+        font-display: block;
+      }
+      :root {
+        --ink: #172d3a;
+        --muted: #52656e;
+        --teal: #17635b;
+        --canvas: #f5f6f2;
+        --line: #d7e0dc;
+        --control: #81908c;
+        --sand: #f4c7a1;
+        --radius: 12px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        font:
+          16px/1.43 'Source Sans 3',
+          sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        background: #dee5df;
+      }
+      a {
+        color: var(--teal);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: Manrope, sans-serif;
+        letter-spacing: -0.45px;
+        margin: 0;
+        font-weight: 700;
+      }
+      h1 {
+        font-size: 32px;
+        line-height: 1.18;
+      }
+      h2 {
+        font-size: 25px;
+        line-height: 1.25;
+      }
+      h3 {
+        font-size: 18px;
+        line-height: 1.35;
+        margin-bottom: 8px;
+      }
+      p {
+        margin: 8px 0 12px;
+      }
+      ul {
+        margin: 8px 0 0;
+        padding-left: 20px;
+      }
+      li {
+        padding-left: 3px;
+        margin-bottom: 9px;
+      }
+      b,
+      strong {
+        font-weight: 650;
+      }
+      code,
+      .code-block {
+        font-family: 'DejaVu Sans Mono', monospace;
+        font-size: 0.82em;
+      }
+      code {
+        overflow-wrap: anywhere;
+      }
+      small,
+      .small {
+        font-size: 13px;
+        line-height: 1.38;
+      }
+      .muted,
+      .hint {
+        color: var(--muted);
+      }
+      .center {
+        text-align: center;
+      }
+      .manrope {
+        font-family: Manrope;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .between {
+        justify-content: space-between;
+      }
+      .end {
+        justify-content: flex-end;
+      }
+      .push {
+        margin-left: auto;
+      }
+      .cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 32px;
+      }
+      .cols.three {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .cols.narrow-gap {
+        gap: 16px;
+      }
+      .stack {
+        display: grid;
+        gap: 10px;
+      }
+      .eyebrow,
+      .cover-kicker {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        color: var(--muted);
+      }
+      .icon {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        vertical-align: middle;
+      }
+      .text-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--teal);
+        font-weight: 600;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      .text-link .icon {
+        width: 16px;
+      }
+      .page {
+        width: 297mm;
+        height: 210mm;
+        padding: 31px 44px 26px;
+        display: flex;
+        flex-direction: column;
+        background: var(--canvas);
+        position: relative;
+        break-after: page;
+        overflow: hidden;
+      }
+      .page:last-child {
+        break-after: auto;
+      }
+      .running {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 10px;
+        letter-spacing: 1.4px;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 21px;
+        height: 18px;
+        flex-shrink: 0;
+      }
+      .running-brand {
+        font-weight: 750;
+        color: var(--teal);
+      }
+      .heading {
+        flex-shrink: 0;
+      }
+      .deck {
+        font-size: 17px;
+        line-height: 1.4;
+        margin: 9px 0 23px;
+        max-width: 940px;
+        color: var(--muted);
+      }
+      .body {
+        flex: 1;
+        min-height: 0;
+      }
+      .footer {
+        display: flex;
+        justify-content: space-between;
+        border-top: 1px solid var(--line);
+        padding-top: 9px;
+        margin-top: 15px;
+        font-size: 10px;
+        letter-spacing: 0.5px;
+        flex-shrink: 0;
+      }
+      .footer a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+      .folio {
+        font-weight: 700;
+        color: var(--teal);
+      }
+      .panel {
+        padding: 22px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+      .note {
+        padding: 16px 18px;
+        background: #ffffff;
+        border-left: 3px solid var(--teal);
+        border-radius: 0 8px 8px 0;
+        margin-top: 14px;
+      }
+      .note p {
+        font-size: 14px;
+        line-height: 1.42;
+        margin: 6px 0 0;
+      }
+      .note.soft {
+        background: #e8f3ef;
+      }
+      .spec {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 15px;
+        line-height: 1.32;
+      }
+      .spec th {
+        text-align: left;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        padding: 9px 9px;
+        border-bottom: 2px solid var(--line);
+      }
+      .spec td {
+        border-bottom: 1px solid var(--line);
+        padding: 10px 9px;
+        vertical-align: top;
+      }
+      .spec td:first-child {
+        font-weight: 600;
+      }
+      .spec.compact {
+        font-size: 14px;
+      }
+      .spec.compact td {
+        padding: 8px;
+      }
+      .spec th:first-child,
+      .spec td:first-child {
+        padding-left: 0;
+      }
+      .spec th:last-child,
+      .spec td:last-child {
+        padding-right: 0;
+      }
+      .spec td:last-child {
+        color: var(--muted);
+      }
+      .btn {
+        font-family: 'Source Sans 3';
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 8px 14px;
+        border: 1px solid var(--control);
+        border-radius: 8px;
+        background: white;
+        color: var(--ink);
+        font-size: 15px;
+        font-weight: 600;
+        white-space: nowrap;
+        line-height: 1.1;
+        vertical-align: middle;
+      }
+      .btn.primary {
+        background: var(--teal);
+        border-color: var(--teal);
+        color: white;
+      }
+      .btn.quiet {
+        background: transparent;
+        border-color: transparent;
+        color: var(--teal);
+      }
+      .btn.danger {
+        background: #a33131;
+        border-color: #a33131;
+        color: white;
+      }
+      .btn.hover {
+        background: #124f49;
+        color: white;
+        border-color: #124f49;
+      }
+      .btn.pressed {
+        background: #0d3d38;
+        color: white;
+        border-color: #0d3d38;
+      }
+      .btn.focus {
+        outline: 3px solid #315eca;
+        outline-offset: 3px;
+      }
+      .btn.loading {
+        background: #eef2ef;
+        border-color: #81908c;
+        color: #52656e;
+      }
+      .btn.small-btn {
+        font-size: 13px;
+        min-height: 36px;
+        padding: 7px 10px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #eef2ef;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+        padding: 5px 8px;
+        border-radius: 5px;
+        white-space: nowrap;
+        line-height: 1.2;
+      }
+      .badge .icon {
+        width: 14px;
+        height: 14px;
+      }
+      .success {
+        background: #eaf5ed !important;
+        color: #256644;
+      }
+      .warning {
+        background: #fff4d6 !important;
+        color: #875200;
+      }
+      .danger {
+        background: #fdecec !important;
+        color: #a33131;
+      }
+      .info {
+        background: #edf3ff !important;
+        color: #2c5da8;
+      }
+      .ai {
+        background: #f3effa !important;
+        color: #6952a3;
+      }
+      .mark {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--teal);
+        color: white;
+        font-family: Manrope;
+        font-size: 22px;
+        font-weight: 800;
+        border-radius: 8px;
+        line-height: 1;
+        position: relative;
+      }
+      .brand {
+        display: flex;
+        gap: 9px;
+        align-items: center;
+        font-family: Manrope;
+        font-size: 14px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .mark > span {
+        display: none;
+      }
+      .principle {
+        display: flex;
+        gap: 16px;
+        padding: 0 0 20px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--line);
+      }
+      .principle > span {
+        font: 600 22px Manrope;
+        color: var(--teal);
+      }
+      .principle p {
+        margin-bottom: 0;
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 22px 18px;
+      }
+      .swatch > div {
+        height: 66px;
+        border-radius: 9px;
+        margin-bottom: 9px;
+        border: 1px solid #172d3a18;
+      }
+      .swatch strong,
+      .swatch code {
+        display: block;
+      }
+      .swatch code {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .swatch p {
+        font-size: 13px;
+        line-height: 1.3;
+        margin: 6px 0 0;
+      }
+      .semantic {
+        padding: 12px 16px;
+        border-radius: 9px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        column-gap: 10px;
+      }
+      .semantic p {
+        grid-column: 1/-1;
+        font-size: 14px;
+        line-height: 1.3;
+        margin: 6px 0 0;
+      }
+      .semantic > .small {
+        font-size: 11px;
+        align-self: center;
+      }
+      .type-pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 20px 26px;
+        gap: 36px;
+      }
+      .type-pair > div + div {
+        border-left: 1px solid var(--line);
+        padding-left: 30px;
+      }
+      .type-display {
+        font: 700 44px/1.2 Manrope;
+        letter-spacing: -1px;
+        margin: 8px 0;
+      }
+      .type-display.source {
+        font-family: 'Source Sans 3';
+      }
+      .type-pair p {
+        margin: 9px 0;
+        font-size: 21px;
+        line-height: 1.35;
+      }
+      .spacing-demo {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px 20px;
+        margin: 18px 0 24px;
+      }
+      .spacing-demo > div {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .spacing-demo b {
+        width: 25px;
+        font-variant-numeric: tabular-nums;
+      }
+      .spacing-demo span {
+        display: block;
+        height: 15px;
+        background: var(--teal);
+        border-radius: 3px;
+      }
+      .surface-demo {
+        display: flex;
+        gap: 16px;
+        margin-top: 22px;
+      }
+      .surface-demo > div {
+        height: 126px;
+        flex: 1;
+        padding: 18px 14px;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        font-size: 13px;
+      }
+      .surface-demo > div:first-child {
+        border: 1px dashed var(--control);
+      }
+      .surface-demo > div:nth-child(2) {
+        border: 1px solid var(--line);
+        background: white;
+      }
+      .surface-demo > div:last-child {
+        background: white;
+        box-shadow: 0 8px 24px #172d3a1f;
+      }
+      .surface-demo b {
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
+      .nav-study {
+        display: grid;
+        grid-template-columns: 235px 1fr;
+        gap: 34px;
+      }
+      .mock-nav {
+        background: #f7f9f5;
+        border-right: 1px solid var(--line);
+        padding: 18px 14px;
+        display: flex;
+        flex-direction: column;
+        font-size: 13px;
+      }
+      .standalone-nav .mock-nav {
+        height: 540px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+      .workspace {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 10px;
+        margin: 18px 0 6px;
+        font-weight: 600;
+      }
+      .workspace span {
+        float: right;
+      }
+      .workspace small {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .nav-group {
+        font-size: 9px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 650;
+        margin: 15px 9px 5px;
+      }
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 9px;
+        margin: 1px 0;
+        border-radius: 6px;
+      }
+      .nav-item .icon {
+        width: 17px;
+        height: 17px;
+      }
+      .nav-item.on {
+        background: #e8f3ef;
+        color: var(--teal);
+        font-weight: 700;
+        box-shadow: inset 3px 0 var(--teal);
+      }
+      .nav-text {
+        padding: 5px 9px;
+      }
+      .nav-bottom {
+        margin-top: auto;
+        padding: 14px 9px 0;
+        border-top: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .mobile-nav {
+        display: flex;
+        justify-content: space-around;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 13px;
+        margin-top: 16px;
+      }
+      .mobile-nav > span {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+        font-size: 13px;
+      }
+      .mobile-nav > span:first-child {
+        color: var(--teal);
+        font-weight: 700;
+      }
+      .app-frame {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: 190px 1fr;
+      }
+      .register {
+        height: 430px;
+      }
+      .register .mock-nav {
+        font-size: 11px;
+        padding: 14px 10px;
+      }
+      .register .mock-nav .brand {
+        font-size: 12px;
+      }
+      .register .mark {
+        width: 25px;
+        height: 25px;
+        font-size: 18px;
+      }
+      .register .nav-group {
+        font-size: 8px;
+        margin: 10px 8px 3px;
+      }
+      .register .nav-item {
+        padding: 5px 8px;
+      }
+      .register .nav-text {
+        padding: 3px 8px;
+      }
+      .register .workspace {
+        margin-top: 13px;
+        padding: 8px;
+      }
+      .register .nav-bottom {
+        padding-top: 8px;
+        font-size: 10px;
+      }
+      .mock-main {
+        padding: 19px 22px;
+        min-width: 0;
+      }
+      .mock-main h2 {
+        font-size: 24px;
+        margin-top: 4px;
+      }
+      .mock-main p {
+        font-size: 13px;
+        margin: 5px 0 0;
+      }
+      .breadcrumb {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .stat-strip {
+        display: flex;
+        gap: 0;
+        padding: 15px 0;
+        margin-bottom: 10px;
+      }
+      .stat-strip > div {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        border-right: 1px solid var(--line);
+        padding: 0 22px;
+      }
+      .stat-strip > div:first-child {
+        padding-left: 0;
+      }
+      .stat-strip > div:last-child {
+        border: 0;
+      }
+      .stat-strip b {
+        font: 700 25px Manrope;
+      }
+      .stat-strip span {
+        font-size: 12px;
+        max-width: 90px;
+        line-height: 1.15;
+        color: var(--muted);
+      }
+      .toolbar {
+        display: flex;
+        gap: 9px;
+      }
+      .toolbar .btn {
+        min-height: 36px;
+        font-size: 13px;
+        padding: 7px 10px;
+      }
+      .search-box {
+        height: 36px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+        border: 1px solid var(--control);
+        border-radius: 7px;
+        padding: 0 10px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .search-box .icon {
+        width: 16px;
+      }
+      .filter-row {
+        font-size: 11px;
+        margin: 10px 0;
+      }
+      .filter-row .badge {
+        font-size: 10px;
+      }
+      .table-card {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        overflow: hidden;
+      }
+      .asset-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      .asset-table th {
+        background: #f5f7f3;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 650;
+        color: var(--muted);
+        padding: 12px;
+      }
+      .asset-table td {
+        padding: 13px 12px;
+        border-top: 1px solid var(--line);
+        vertical-align: middle;
+      }
+      .asset-table .check-col {
+        width: 28px;
+      }
+      .asset-table small {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+        margin-top: 3px;
+      }
+      .asset-table strong {
+        font-weight: 650;
+        color: var(--teal);
+      }
+      .asset-table .num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .register .asset-table {
+        font-size: 12px;
+      }
+      .register .asset-table th {
+        font-size: 10px;
+        padding: 8px 9px;
+      }
+      .register .asset-table td {
+        padding: 8px 9px;
+      }
+      .register .asset-table small {
+        font-size: 10px;
+        margin-top: 2px;
+      }
+      .register .asset-table .badge {
+        font-size: 9px;
+        padding: 4px 6px;
+      }
+      .table-footer {
+        font-size: 10px;
+        border-top: 1px solid var(--line);
+        padding: 10px;
+        color: var(--muted);
+      }
+      .caption-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-top: 19px;
+      }
+      .caption-grid b {
+        font-size: 14px;
+      }
+      .caption-grid p {
+        font-size: 13px;
+        line-height: 1.38;
+        margin: 5px 0 0;
+        color: var(--muted);
+      }
+      .specimen-caption {
+        font-size: 10px;
+        letter-spacing: 0.2px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+      .detail-frame {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 23px 26px;
+      }
+      .detail-frame > div > .muted {
+        font-size: 13px;
+      }
+      .detail-frame p {
+        font-size: 14px;
+      }
+      .tabs {
+        display: flex;
+        gap: 25px;
+        border-bottom: 1px solid var(--line);
+        margin-top: 17px;
+        font-size: 13px;
+      }
+      .tabs > * {
+        padding: 10px 0;
+      }
+      .tabs b {
+        color: var(--teal);
+        border-bottom: 3px solid var(--teal);
+      }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 28px;
+        margin-top: 18px;
+      }
+      .photo-placeholder {
+        height: 147px;
+        background: #eef2ef;
+        border-radius: 8px;
+        text-align: center;
+        padding: 5px;
+      }
+      .hvac {
+        width: 100%;
+        height: 122px;
+        display: block;
+      }
+      .photo-placeholder span {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .data-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 13px 18px;
+        margin-top: 16px;
+        font-size: 13px;
+      }
+      .data-grid span {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .data-grid b {
+        font-weight: 600;
+      }
+      .task-card {
+        padding: 16px;
+        background: #f8f9f5;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .task-card h3 {
+        font-size: 16px;
+        margin: 0 0 10px;
+      }
+      .task-card .text-link {
+        font-size: 12px;
+      }
+      .task-card p {
+        margin: 6px 0;
+        font-size: 12px;
+      }
+      .task-card .btn {
+        min-height: 32px;
+        font-size: 12px;
+        padding: 6px 10px;
+        margin-top: 6px;
+      }
+      .access-note {
+        display: flex;
+        gap: 10px;
+        background: #edf3ff;
+        border-radius: 8px;
+        padding: 12px;
+        margin-top: 12px;
+        color: #2c5da8;
+        font-size: 13px;
+      }
+      .access-note p {
+        font-size: 12px;
+        margin: 3px 0 0;
+      }
+      .field {
+        margin: 14px 0;
+      }
+      .field-label {
+        font-weight: 600;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+      }
+      .input {
+        min-height: 43px;
+        border: 1px solid var(--control);
+        background: white;
+        border-radius: 8px;
+        padding: 9px 12px;
+        font-size: 16px;
+        line-height: 1.4;
+      }
+      .hint {
+        font-size: 13px;
+        margin-top: 5px;
+        line-height: 1.3;
+      }
+      .help {
+        width: 24px;
+        height: 24px;
+        color: var(--muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+      }
+      .help.active {
+        color: var(--teal);
+        background: #e8f3ef;
+      }
+      .help .icon {
+        width: 18px;
+        height: 18px;
+      }
+      .optional {
+        font-size: 13px;
+        font-weight: 400;
+        color: var(--muted);
+      }
+      .error-field .input {
+        border-color: #a33131;
+        box-shadow: 0 0 0 1px #a33131;
+      }
+      .error-copy {
+        color: #a33131;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 13px;
+        margin-top: 6px;
+      }
+      .error-copy .icon {
+        width: 16px;
+        height: 16px;
+      }
+      .form-specimen {
+        padding: 22px;
+      }
+      .form-specimen .field {
+        margin: 11px 0;
+      }
+      .form-specimen > p {
+        font-size: 14px;
+      }
+      .form-specimen .cols .field {
+        margin: 4px 0;
+      }
+      .help-demo {
+        padding: 24px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+      }
+      .help-pop {
+        padding: 20px;
+        border: 1px solid var(--line);
+        box-shadow: 0 8px 24px #172d3a1f;
+        background: white;
+        border-radius: 12px;
+        margin-top: 18px;
+        border-top: 3px solid var(--teal);
+      }
+      .help-pop p {
+        font-size: 15px;
+      }
+      .help-pop .text-link {
+        font-size: 14px;
+      }
+      .control-specs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+      }
+      .control-specs p {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+      .state-row {
+        display: flex;
+        justify-content: space-between;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        padding: 23px 0;
+        margin-top: 14px;
+        gap: 16px;
+      }
+      .state-row > div {
+        display: flex;
+        align-items: center;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .state-row b {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .state-row .btn {
+        font-size: 13px;
+        padding: 10px 15px;
+      }
+      .bulk-bar {
+        padding: 13px 16px;
+        background: #edf3ff;
+        border: 1px solid #b6c8e2;
+        border-radius: 8px;
+        margin-top: 14px;
+        font-size: 14px;
+      }
+      .bulk-bar .btn {
+        font-size: 13px;
+        min-height: 36px;
+      }
+      .report-frame {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 24px;
+      }
+      .report-frame h2 {
+        margin-top: 6px;
+      }
+      .report-frame p {
+        font-size: 14px;
+      }
+      .report-grid {
+        display: grid;
+        grid-template-columns: 1.8fr 1fr;
+        gap: 35px;
+        margin-top: 27px;
+      }
+      .report-grid aside {
+        border-left: 1px solid var(--line);
+        padding-left: 28px;
+      }
+      .report-total {
+        display: block;
+        font: 700 36px Manrope;
+        margin: 4px 0 8px;
+      }
+      .bar-line {
+        display: grid;
+        grid-template-columns: 108px 1fr 72px;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        margin-bottom: 15px;
+      }
+      .bar-line > div {
+        height: 24px;
+        border-left: 1px solid var(--control);
+      }
+      .bar-line i {
+        display: block;
+        background: var(--teal);
+        height: 100%;
+        border-radius: 0 3px 3px 0;
+      }
+      .bar-line b {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      .axis {
+        font-size: 10px;
+        color: var(--muted);
+        margin: 0 82px 15px 118px;
+        border-top: 1px solid var(--control);
+        display: flex;
+        justify-content: space-between;
+      }
+      .phones {
+        display: flex;
+        justify-content: center;
+        gap: 34px;
+      }
+      .phone {
+        width: 280px;
+        height: 437px;
+        border: 1.5px solid #81908c;
+        border-radius: 22px;
+        overflow: hidden;
+        background: white;
+        box-shadow: 0 5px 16px #172d3a0d;
+        display: flex;
+        flex-direction: column;
+      }
+      .phone-top {
+        height: 45px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 16px;
+        font-family: Manrope;
+        font-size: 11px;
+        flex-shrink: 0;
+      }
+      .phone-top .icon {
+        width: 17px;
+      }
+      .phone-body {
+        padding: 16px;
+        flex: 1;
+        min-height: 0;
+        font-size: 13px;
+      }
+      .phone-body .eyebrow {
+        font-size: 8px;
+        letter-spacing: 1px;
+      }
+      .phone-body h2 {
+        font-size: 20px;
+        line-height: 1.25;
+        margin: 6px 0 12px;
+      }
+      .phone-body .btn {
+        width: 100%;
+        font-size: 13px;
+        min-height: 35px;
+        margin-top: 9px;
+        padding: 7px;
+      }
+      .phone-body > .text-link {
+        display: block;
+        text-align: center;
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      .phone-bottom {
+        text-align: center;
+        font-size: 10px;
+        color: var(--muted);
+        background: #f5f6f2;
+        padding: 7px;
+        flex-shrink: 0;
+      }
+      .chat {
+        background: #e8f3ef;
+        border-radius: 2px 10px 10px 10px;
+        padding: 13px;
+        line-height: 1.4;
+      }
+      .voice-orb {
+        width: 62px;
+        height: 62px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #e8f3ef;
+        color: var(--teal);
+        margin: 15px auto 9px;
+      }
+      .voice-orb .icon {
+        width: 27px;
+        height: 27px;
+      }
+      .phone-body p {
+        margin: 7px 0;
+      }
+      .phone-body .center {
+        font-size: 12px;
+      }
+      .phone-note {
+        padding: 9px 10px;
+        margin-top: 14px;
+        background: #f5f6f2;
+        font-size: 11px;
+        color: var(--muted);
+        border-radius: 7px;
+      }
+      .camera-frame {
+        height: 161px;
+        background: #e5ece7;
+        border: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        gap: 15px;
+        margin-top: 12px;
+      }
+      .camera-frame > span {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .nameplate {
+        font:
+          10px/1.8 'DejaVu Sans Mono',
+          monospace;
+        background: #f6f5ec;
+        border: 1px solid #81908c;
+        box-shadow: 2px 2px 0 #b7c4ba;
+        padding: 13px 18px;
+        color: #172d3a;
+        transform: rotate(-2deg);
+      }
+      .phone-body .field {
+        margin: 8px 0;
+      }
+      .phone-body .field-label {
+        font-size: 11px;
+        margin-bottom: 3px;
+      }
+      .phone-body .input {
+        font-size: 12px;
+        min-height: 32px;
+        padding: 7px 8px;
+      }
+      .phone-body .badge {
+        font-size: 10px;
+      }
+      .phone-task {
+        padding: 10px;
+        background: #fff4d6;
+        color: #875200;
+        border-radius: 7px;
+        font-size: 11px;
+        margin-top: 10px;
+      }
+      .phone-task p {
+        margin: 3px 0 0;
+      }
+      .phone-body .small {
+        font-size: 10px;
+      }
+      .ai-proof {
+        background: #eef2ef;
+        padding: 25px 18px 10px;
+        border-radius: 8px;
+        margin: 18px 0;
+      }
+      .ai-proof .nameplate {
+        width: 200px;
+        margin: 0 auto;
+        font-size: 12px;
+      }
+      .ai-proof p {
+        text-align: center;
+        margin-top: 18px;
+      }
+      .suggestion-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--line);
+        font-size: 14px;
+      }
+      .suggestion-row > span:first-child {
+        width: 90px;
+        color: var(--muted);
+      }
+      .feedback-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      .feedback-card {
+        border: 1px solid var(--line);
+        background: white;
+        border-radius: 12px;
+        padding: 18px;
+        min-height: 190px;
+      }
+      .feedback-card h3 {
+        font-size: 16px;
+        margin: 0;
+      }
+      .feedback-card p {
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      .feedback-card .btn {
+        min-height: 35px;
+        font-size: 12px;
+        padding: 8px 10px;
+      }
+      .feedback-card .small {
+        font-size: 12px;
+      }
+      .skeleton {
+        height: 11px;
+        width: 80%;
+        background: #d7e1f1;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      .skeleton.short {
+        width: 55%;
+      }
+      .dialog-stage {
+        padding: 24px;
+        background: #e3e9e4;
+        border-radius: 16px;
+      }
+      .dialog {
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 25px;
+        box-shadow: 0 8px 24px #172d3a1f;
+      }
+      .dialog h2 {
+        font-size: 24px;
+      }
+      .dialog p {
+        font-size: 15px;
+        margin-top: 16px;
+      }
+      .warning-block {
+        background: #fff4d6;
+        color: #875200;
+        border-radius: 8px;
+        padding: 14px;
+        margin: 20px 0;
+      }
+      .warning-block p {
+        font-size: 13px;
+        margin: 5px 0 0;
+      }
+      .dialog-stage > p {
+        margin: 18px 2px 0;
+      }
+      .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 13px 9px;
+        margin: 18px 0;
+      }
+      .icon-grid > span {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .icon-grid .icon {
+        width: 25px;
+        height: 25px;
+        color: var(--teal);
+      }
+      .icon-grid small {
+        font-size: 10px;
+      }
+      .code-block {
+        background: #172d3a;
+        color: #f5f6f2;
+        border-radius: 12px;
+        padding: 18px 22px;
+        font-size: 12px;
+        line-height: 1.53;
+        margin: 12px 0;
+        white-space: pre-wrap;
+      }
+      .brief {
+        border: 1px solid #b3cabc;
+        border-radius: 12px;
+        padding: 20px;
+        background: #e8f3ef;
+        margin: 20px 0;
+      }
+      .brief p {
+        font-size: 15px;
+        line-height: 1.5;
+        margin-bottom: 0;
+      }
+      .review-checks p {
+        display: flex;
+        gap: 12px;
+        font-size: 15px;
+        margin: 0 0 11px;
+      }
+      .review-checks span {
+        color: var(--teal);
+        font-size: 21px;
+        line-height: 1;
+      }
+      .references {
+        padding-left: 20px;
+        margin: 12px 0;
+      }
+      .references li {
+        font-size: 13px;
+        margin-bottom: 11px;
+        padding-left: 4px;
+      }
+      .references span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 3px;
+      }
+      .cover .heading {
+        display: none;
+      }
+      .cover {
+        background: #eff3ea;
+      }
+      .cover .running {
+        margin-bottom: 30px;
+      }
+      .cover-layout {
+        display: grid;
+        grid-template-columns: 0.95fr 1.05fr;
+        gap: 40px;
+        align-items: center;
+        height: 100%;
+      }
+      .cover-kicker {
+        color: var(--teal);
+        font-size: 11px;
+      }
+      .cover h1 {
+        font-size: 54px;
+        line-height: 1.14;
+        letter-spacing: -2px;
+        margin: 23px 0 23px;
+      }
+      .cover h1 em {
+        font-style: normal;
+        color: var(--teal);
+      }
+      .cover-intro {
+        font-size: 21px;
+        line-height: 1.42;
+        max-width: 390px;
+      }
+      .cover-topics {
+        font-size: 15px;
+        color: var(--muted);
+        margin-top: 35px;
+        line-height: 1.7;
+      }
+      .cover-version {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 28px;
+      }
+      .cover-art {
+        position: relative;
+        padding: 28px 0 15px;
+      }
+      .cover-oval {
+        position: absolute;
+        width: 410px;
+        height: 465px;
+        background: #d9e5d7;
+        border-radius: 190px 190px 60px 60px;
+        right: -8px;
+        top: 0;
+        transform: rotate(7deg);
+      }
+      .cover-card {
+        position: relative;
+        background: #ffffff;
+        border: 1px solid #cedbd0;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 12px 36px #172d3a14;
+        transform: rotate(-2deg);
+      }
+      .cover-card h2 {
+        font-size: 33px;
+        letter-spacing: -1px;
+        margin: 27px 0 10px;
+      }
+      .cover-card p {
+        font-size: 16px;
+        color: var(--muted);
+      }
+      .mini-stats {
+        display: flex;
+        gap: 25px;
+        margin: 20px 0;
+      }
+      .mini-stats > div {
+        display: flex;
+        flex-direction: column;
+      }
+      .mini-stats b {
+        font: 700 30px Manrope;
+      }
+      .mini-stats span {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+      .cover-asset {
+        border: 1px solid var(--line);
+        padding: 12px;
+        border-radius: 12px;
+        background: #f7f9f5;
+      }
+      .cover-asset .hvac {
+        height: 105px;
+      }
+      .cover-asset strong {
+        font-size: 13px;
+      }
+      .cover-asset > .muted {
+        font-size: 11px;
+      }
+      .cover-asset .badge {
+        font-size: 9px;
+      }
+      .cover-card > .row > .btn {
+        font-size: 13px;
+        min-height: 40px;
+        padding: 8px 12px;
+      }
+      .cover-card .text-link {
+        font-size: 11px;
+      }
+      .float-note {
+        position: absolute;
+        right: -14px;
+        bottom: 70px;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        background: #f4c7a1;
+        border: 1px solid #e0ab80;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px #172d3a1f;
+        padding: 13px 17px;
+        font-size: 13px;
+        transform: rotate(2deg);
+      }
+      .float-note .icon {
+        width: 26px;
+        height: 26px;
+      }
+      .specimen-tag {
+        font-size: 10px;
+        color: var(--muted);
+        position: relative;
+        text-align: right;
+        margin-top: 18px;
+      }
+      .cover .footer {
+        border-color: #c4d5c4;
+      }
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+      @media screen {
+        .page {
+          margin: 22px auto;
+          box-shadow: 0 4px 30px #172d3a22;
+        }
+      }
+      @media print {
+        body {
+          background: white;
+        }
+        .page {
+          margin: 0;
+        }
+      }
+
+      .page {
+        padding-top: 28px;
+      }
+      .running {
+        margin-bottom: 16px;
+      }
+      .deck {
+        margin-bottom: 18px;
+      }
+      .body {
+        font-size: 15px;
+        line-height: 1.4;
+      }
+      .cols {
+        align-items: start;
+      }
+      .spec.compact td {
+        padding-top: 7px;
+        padding-bottom: 7px;
+      }
+      .note {
+        padding: 14px 17px;
+      }
+      .note p {
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .standalone-nav .mock-nav {
+        height: 505px;
+      }
+      #page-9 .detail-frame {
+        zoom: 0.9;
+      }
+      #page-13 .asset-table tbody tr:last-child {
+        display: none;
+      }
+      #page-13 li,
+      #page-14 li {
+        margin-bottom: 7px;
+      }
+      .phone {
+        height: 488px;
+      }
+      .code-block {
+        font-size: 11.5px;
+        line-height: 1.4;
+      }
+      .cover-oval {
+        right: 8px;
+        width: 390px;
+      }
+      .float-note {
+        bottom: 16px;
+        right: 5px;
+      }
+      .specimen-tag {
+        margin-top: 26px;
+      }
+      .form-specimen {
+        padding: 16px 22px;
+      }
+      .help-demo {
+        padding: 20px;
+      }
+      .help-pop {
+        padding: 16px;
+      }
+      #page-14 .report-frame {
+        padding: 20px;
+      }
+      #page-14 .report-grid {
+        margin-top: 20px;
+      }
+      #page-14 .bar-line {
+        margin-bottom: 13px;
+      }
+      .body > .cols > div > :last-child {
+        margin-bottom: 0;
+      }
+      .standalone-nav .mock-nav {
+        height: 580px;
+        zoom: 0.88;
+      }
+      .register {
+        height: 520px;
+        zoom: 0.9;
+      }
+      .btn.danger {
+        background: #a33131 !important;
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <section
+      class="page"
+      id="page-3"
+      aria-label="Page 1: A calm canvas. A clear accent."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>01 / Color foundations</span>
+      </header>
+      <div class="heading">
+        <h1>A calm canvas. A clear accent.</h1>
+        <p class="deck">
+          Teal marks intentional action. Warm whites and restrained borders keep
+          dense information easy to scan.
+        </p>
+      </div>
+      <div class="body">
+        <div class="swatches">
+          <div class="swatch">
+            <div style="background: #172d3a"></div>
+            <strong>Ink</strong><code>#172D3A</code>
+            <p>Primary text and headings</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #52656e"></div>
+            <strong>Muted ink</strong><code>#52656E</code>
+            <p>Supporting text—not faint text</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #17635b"></div>
+            <strong>Teal</strong><code>#17635B</code>
+            <p>Primary actions, active navigation</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #f5f6f2"></div>
+            <strong>Canvas</strong><code>#F5F6F2</code>
+            <p>Page background</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #ffffff"></div>
+            <strong>Surface</strong><code>#FFFFFF</code>
+            <p>Cards, tables, inputs</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #eef2ef"></div>
+            <strong>Soft surface</strong><code>#EEF2EF</code>
+            <p>Quiet grouping and read-only areas</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #e8f3ef"></div>
+            <strong>Selected</strong><code>#E8F3EF</code>
+            <p>Selection and active-row tint</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #d7e0dc"></div>
+            <strong>Divider</strong><code>#D7E0DC</code>
+            <p>Decorative separators only</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #81908c"></div>
+            <strong>Control border</strong><code>#81908C</code>
+            <p>Essential field/control boundaries</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #315eca"></div>
+            <strong>Focus blue</strong><code>#315ECA</code>
+            <p>Keyboard focus ring</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #f4c7a1"></div>
+            <strong>Sand</strong><code>#F4C7A1</code>
+            <p>Rare editorial warmth; not status</p>
+          </div>
+          <div class="swatch">
+            <div style="background: #124f49"></div>
+            <strong>Teal hover</strong><code>#124F49</code>
+            <p>Primary hover; pressed: #0D3D38</p>
+          </div>
+        </div>
+        <div class="cols three" style="margin-top: 22px">
+          <aside class="note">
+            <strong>Let neutrals do most of the work</strong>
+            <p>
+              Start near 85% neutral surfaces, 10% brand, 5% semantic emphasis.
+              This is a restraint heuristic, not a quota.
+            </p>
+          </aside>
+          <aside class="note">
+            <strong>Give color a job</strong>
+            <p>
+              No alternating rainbow panels. Teal is not a synonym for “safe”;
+              use a labeled status badge for a condition.
+            </p>
+          </aside>
+          <aside class="note">
+            <strong>Use the named roles</strong>
+            <p>
+              Choose surface, text, border, and action tokens. Do not select an
+              arbitrary green because it looks close.
+            </p>
+          </aside>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">01 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-4"
+      aria-label="Page 2: Color reinforces meaning. It never carries it alone."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>02 / Meaning &amp; contrast</span>
+      </header>
+      <div class="heading">
+        <h1>Color reinforces meaning. It never carries it alone.</h1>
+        <p class="deck">
+          Every state has plain-language text. Add a shape or icon when urgency
+          or recognition benefits.
+        </p>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div class="stack">
+            <div class="semantic" style="background: #eaf5ed; color: #256644">
+              <div class="row">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m5 12 4 4L19 6" /></svg
+                ><b>In service</b>
+              </div>
+              <div class="small">#256644 on #EAF5ED</div>
+              <p>
+                Confirmed completion or a positive condition—not a guarantee of
+                safety.
+              </p>
+            </div>
+            <div class="semantic" style="background: #fff4d6; color: #875200">
+              <div class="row">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m12 3 10 18H2L12 3Z" />
+                  <path d="M12 9v5m0 3v.2" /></svg
+                ><b>Needs attention</b>
+              </div>
+              <div class="small">#875200 on #FFF4D6</div>
+              <p>
+                Maintenance due, missing important detail, or a condition to
+                review.
+              </p>
+            </div>
+            <div class="semantic" style="background: #fdecec; color: #a33131">
+              <div class="row">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m12 3 10 18H2L12 3Z" />
+                  <path d="M12 9v5m0 3v.2" /></svg
+                ><b>Save failed</b>
+              </div>
+              <div class="small">#A33131 on #FDECEC</div>
+              <p>
+                An error, destructive action, or serious issue. Do not use for
+                every overdue task.
+              </p>
+            </div>
+            <div class="semantic" style="background: #edf3ff; color: #2c5da8">
+              <div class="row">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 6v6l4 2" /></svg
+                ><b>Export processing</b>
+              </div>
+              <div class="small">#2C5DA8 on #EDF3FF</div>
+              <p>Neutral progress or explanatory information.</p>
+            </div>
+            <div class="semantic" style="background: #f3effa; color: #6952a3">
+              <div class="row">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v6M12 7v.2" /></svg
+                ><b>AI suggestion</b>
+              </div>
+              <div class="small">#6952A3 on #F3EFFA</div>
+              <p>Unconfirmed model output, kept distinct from saved facts.</p>
+            </div>
+          </div>
+          <div>
+            <h3>Approved contrast pairs</h3>
+            <table class="spec compact">
+              <thead>
+                <tr>
+                  <th>Foreground / background</th>
+                  <th>Ratio</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Ink / white</td>
+                  <td>14.26:1</td>
+                </tr>
+                <tr>
+                  <td>Muted ink / canvas</td>
+                  <td>5.62:1</td>
+                </tr>
+                <tr>
+                  <td>White / teal</td>
+                  <td>7.07:1</td>
+                </tr>
+                <tr>
+                  <td>Control border / white</td>
+                  <td>3.33:1</td>
+                </tr>
+                <tr>
+                  <td>Focus blue / white</td>
+                  <td>5.86:1</td>
+                </tr>
+                <tr>
+                  <td>Success / success tint</td>
+                  <td>6.13:1</td>
+                </tr>
+                <tr>
+                  <td>Warning / warning tint</td>
+                  <td>5.92:1</td>
+                </tr>
+                <tr>
+                  <td>Danger / danger tint</td>
+                  <td>6.05:1</td>
+                </tr>
+                <tr>
+                  <td>Information / information tint</td>
+                  <td>5.83:1</td>
+                </tr>
+                <tr>
+                  <td>AI / AI tint</td>
+                  <td>5.56:1</td>
+                </tr>
+              </tbody>
+            </table>
+            <aside class="note soft">
+              <strong>Acceptance thresholds</strong>
+              <p>
+                Normal text: ≥4.5:1. Large text: ≥3:1 (24 CSS px regular or
+                about 18.67 px bold). Essential control boundaries and graphical
+                indicators: ≥3:1 against adjacent colors. Recheck actual
+                combinations, including hover and focus. [1, 2]
+              </p>
+            </aside>
+            <p class="small muted">
+              Ratios calculated from these exact sRGB hex values using WCAG
+              relative luminance. Divider gray and sand are not approved text or
+              essential-control colors.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">02 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-5"
+      aria-label="Page 3: Readable first. Distinctive in the right places."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>03 / Typography</span>
+      </header>
+      <div class="heading">
+        <h1>Readable first. Distinctive in the right places.</h1>
+        <p class="deck">
+          Two complementary families: a composed heading voice and a humanist
+          workhorse for everyday use.
+        </p>
+      </div>
+      <div class="body">
+        <div class="type-pair">
+          <div>
+            <div class="eyebrow">HEADINGS &amp; WORDMARK</div>
+            <div class="type-display">Manrope</div>
+            <p class="manrope">
+              Aa Bb 0123456789<br />Know what needs attention.
+            </p>
+            <span class="small muted"
+              >Weights 600 / 700 · no light display weights</span
+            >
+          </div>
+          <div>
+            <div class="eyebrow">INTERFACE, BODY &amp; DATA</div>
+            <div class="type-display source">Source Sans 3</div>
+            <p style="font-size: 22px">
+              Aa Bb 0123456789<br />Replacement cost · $12,500.00
+            </p>
+            <span class="small muted"
+              >Weights 400 / 600 / 700 · italic only when meaningful</span
+            >
+          </div>
+        </div>
+        <div class="cols" style="margin-top: 24px">
+          <div>
+            <table class="spec compact">
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>CSS size / line</th>
+                  <th>Weight</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Page title</td>
+                  <td>32 / 40 px; phone 28 / 36</td>
+                  <td>Manrope 700</td>
+                </tr>
+                <tr>
+                  <td>Section / card title</td>
+                  <td>24 / 32; 18 / 26 px</td>
+                  <td>Manrope 600</td>
+                </tr>
+                <tr>
+                  <td>Body / input / button</td>
+                  <td>16 / 24 px</td>
+                  <td>Source Sans 400 / 600</td>
+                </tr>
+                <tr>
+                  <td>Field label / table cell</td>
+                  <td>14 / 20 px</td>
+                  <td>Source Sans 600 / 400</td>
+                </tr>
+                <tr>
+                  <td>Secondary metadata</td>
+                  <td>13 / 18 px minimum</td>
+                  <td>Source Sans 400</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h3>Composition rules</h3>
+            <ul>
+              <li>
+                Use sentence case. Reserve uppercase for short group labels, not
+                buttons or paragraphs.
+              </li>
+              <li>
+                Keep reading text around 45–75 characters per line. Use left
+                alignment; do not justify.
+              </li>
+              <li>
+                Use tabular numerals for aligned money, dates, counts, and
+                comparison columns. Right-align amounts.
+              </li>
+              <li>
+                Do not shrink core content to fit. Wrap labels, enlarge the
+                container, or simplify the composition.
+              </li>
+            </ul>
+            <p class="small muted">
+              Self-host licensed WOFF2 files in implementation; use
+              <code>font-display: swap</code> and system fallbacks. This PDF
+              embeds font subsets. Both families use SIL Open Font License 1.1;
+              keep the license notices with distributed font files. [6, 7]
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">03 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-6"
+      aria-label="Page 4: Use space to explain the structure."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>04 / Layout &amp; rhythm</span>
+      </header>
+      <div class="heading">
+        <h1>Use space to explain the structure.</h1>
+        <p class="deck">
+          A 4-pixel rhythm, deliberate grouping, and a limited elevation system
+          make complexity feel organized.
+        </p>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div>
+            <h3>Spacing scale · CSS px</h3>
+            <div class="spacing-demo">
+              <div><b>4</b><span style="width: 12px"></span></div>
+              <div><b>8</b><span style="width: 24px"></span></div>
+              <div><b>12</b><span style="width: 36px"></span></div>
+              <div><b>16</b><span style="width: 48px"></span></div>
+              <div><b>24</b><span style="width: 72px"></span></div>
+              <div><b>32</b><span style="width: 96px"></span></div>
+              <div><b>48</b><span style="width: 144px"></span></div>
+              <div><b>64</b><span style="width: 192px"></span></div>
+            </div>
+            <p>
+              Use 4–8 within a control, 12 between related controls, 16 within
+              compact groups, 24 between field groups, and 32–48 between page
+              sections.
+            </p>
+            <p class="small">
+              <b>Responsive ranges:</b> phone &lt;640 px; tablet 640–1023 px;
+              desktop ≥1024 px. At narrow widths, stack fields and detail panels
+              in reading order. Reflow based on available space, including
+              zoom—not device detection.
+            </p>
+            <div class="surface-demo">
+              <div><b>Page</b><span>Warm canvas</span></div>
+              <div><b>Surface</b><span>White + 1 px divider</span></div>
+              <div><b>Overlay</b><span>One restrained shadow</span></div>
+            </div>
+          </div>
+          <div>
+            <table class="spec compact">
+              <thead>
+                <tr>
+                  <th>Constraint</th>
+                  <th>Default</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Page content</td>
+                  <td>Max 1440 px; centered within shell</td>
+                </tr>
+                <tr>
+                  <td>Page padding</td>
+                  <td>32 px desktop · 24 tablet · 16 phone</td>
+                </tr>
+                <tr>
+                  <td>Navigation rail</td>
+                  <td>240 px desktop; drawer below 1024 px</td>
+                </tr>
+                <tr>
+                  <td>Columns / gutters</td>
+                  <td>12 desktop / 24 px; 4 phone / 16 px</td>
+                </tr>
+                <tr>
+                  <td>Editor width</td>
+                  <td>720 px reading/editing; ≤2 field columns</td>
+                </tr>
+                <tr>
+                  <td>Corner radius</td>
+                  <td>8 px controls; 12 cards; 16 dialogs</td>
+                </tr>
+                <tr>
+                  <td>Control height</td>
+                  <td>44 px normal; 48 px capture controls</td>
+                </tr>
+                <tr>
+                  <td>List/table row</td>
+                  <td>56 px comfortable; 44 px optional dense</td>
+                </tr>
+              </tbody>
+            </table>
+            <aside class="note soft">
+              <strong>Density is a choice—not a squeeze</strong>
+              <p>
+                Default to comfortable. A desktop compact mode may reduce
+                padding and row height, but not core text below 14 px or touch
+                targets below 44 px. Do not carry dense mode onto a phone.
+              </p>
+            </aside>
+            <p class="small muted">
+              Prefer borders and spacing over nested cards. At most two surface
+              levels inside the page. Shadow: <code>0 8px 24px #172D3A1F</code>;
+              reserve it for menus, popovers, and dialogs.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">04 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-7"
+      aria-label="Page 5: Group by the work people came to do."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>05 / Navigation &amp; hierarchy</span>
+      </header>
+      <div class="heading">
+        <h1>Group by the work people came to do.</h1>
+        <p class="deck">
+          Replace the visual effect of a wall of equal buttons with stable
+          places, a clear current location, and local actions.
+        </p>
+      </div>
+      <div class="body">
+        <div class="nav-study">
+          <div class="standalone-nav">
+            <aside class="mock-nav">
+              <div class="brand">
+                <span class="mark">Q<span></span></span><b>Quartermaster</b>
+              </div>
+              <div class="workspace">
+                Quartermaster <span>⌄</span><small>Workspace</small>
+              </div>
+              <div class="nav-group">Everyday</div>
+              <div class="nav-item on">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="4" width="6" height="6" rx="1" />
+                  <rect x="14" y="4" width="6" height="6" rx="1" />
+                  <rect x="4" y="14" width="6" height="6" rx="1" />
+                  <rect x="14" y="14" width="6" height="6" rx="1" /></svg
+                >Assets
+              </div>
+              <div class="nav-item">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="3" width="6" height="12" rx="3" />
+                  <path d="M5 11v2a7 7 0 0 0 14 0v-2M12 20v2M8 22h8" /></svg
+                >Capture
+              </div>
+              <div class="nav-item">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m14 5 5-1-1 5-4 1-6 10-4-4 10-6Z" /></svg
+                >Maintenance
+              </div>
+              <div class="nav-item">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 7h7l2-3h9v16H3V7Z" /></svg
+                >Locations
+              </div>
+              <div class="nav-group">Planning &amp; records</div>
+              <div class="nav-text">Insurance</div>
+              <div class="nav-text">Incidents</div>
+              <div class="nav-text">Accounting</div>
+              <div class="nav-text">Reports</div>
+              <div class="nav-group">Manage</div>
+              <div class="nav-text">Asset types · Rules</div>
+              <div class="nav-text">Activity · Team · Settings</div>
+              <div class="nav-bottom">
+                Help &amp; guidance
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v6M12 7v.2" />
+                </svg>
+              </div>
+            </aside>
+          </div>
+          <div>
+            <h3>Recommended information architecture</h3>
+            <table class="spec">
+              <thead>
+                <tr>
+                  <th>Group</th>
+                  <th>Destinations / intent</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Everyday</td>
+                  <td>Assets · Capture · Maintenance · Locations</td>
+                </tr>
+                <tr>
+                  <td>Planning & records</td>
+                  <td>Insurance · Incidents · Accounting · Reports</td>
+                </tr>
+                <tr>
+                  <td>Manage</td>
+                  <td>Asset types · Rules · Activity · Team · Settings</td>
+                </tr>
+              </tbody>
+            </table>
+            <p>
+              Use <b>Maintenance</b> in place of the ambiguous “Work,” and
+              <b>Asset types</b> in place of “Types.” Keep the underlying
+              permissions and capabilities unchanged.
+            </p>
+            <h3 style="margin-top: 20px">One page, one obvious priority</h3>
+            <p>
+              Page title + one-sentence purpose → primary action → filters or
+              local tabs → working content. Use real links for navigation and
+              buttons for actions. Asset tabs belong within the asset, not
+              beside global destinations.
+            </p>
+            <div class="mobile-nav">
+              <span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="4" width="6" height="6" rx="1" />
+                  <rect x="14" y="4" width="6" height="6" rx="1" />
+                  <rect x="4" y="14" width="6" height="6" rx="1" />
+                  <rect x="14" y="14" width="6" height="6" rx="1" /></svg
+                >Assets</span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="3" width="6" height="12" rx="3" />
+                  <path d="M5 11v2a7 7 0 0 0 14 0v-2M12 20v2M8 22h8" /></svg
+                >Capture</span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m14 5 5-1-1 5-4 1-6 10-4-4 10-6Z" /></svg
+                >Maintenance</span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 6h16M4 12h16M4 18h16" /></svg
+                >More</span
+              >
+            </div>
+            <p class="small muted">
+              Phone navigation: four labeled destinations; More opens grouped
+              navigation. Hide the bottom bar while the software keyboard is
+              open if it would obstruct editing. Keep workspace switching in the
+              header; never mix records across workspaces.
+            </p>
+            <aside class="note soft">
+              <strong>Permissions & discovery</strong>
+              <p>
+                Omit actions a role cannot perform. Where context requires an
+                unavailable capability, show a read-only explanation—not a
+                mysterious disabled button. No “coming soon” controls.
+              </p>
+            </aside>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">05 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-8"
+      aria-label="Page 6: The asset register: calm, capable, scannable."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>06 / Desktop specimen</span>
+      </header>
+      <div class="heading">
+        <h1>The asset register: calm, capable, scannable.</h1>
+        <p class="deck">
+          The working area gets the space. Selection, search, status, and next
+          actions have distinct visual roles.
+        </p>
+      </div>
+      <div class="body">
+        <div class="app-frame register">
+          <aside class="mock-nav">
+            <div class="brand">
+              <span class="mark">Q<span></span></span><b>Quartermaster</b>
+            </div>
+            <div class="workspace">
+              Quartermaster <span>⌄</span><small>Workspace</small>
+            </div>
+            <div class="nav-group">Everyday</div>
+            <div class="nav-item on">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="4" y="4" width="6" height="6" rx="1" />
+                <rect x="14" y="4" width="6" height="6" rx="1" />
+                <rect x="4" y="14" width="6" height="6" rx="1" />
+                <rect x="14" y="14" width="6" height="6" rx="1" /></svg
+              >Assets
+            </div>
+            <div class="nav-item">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="9" y="3" width="6" height="12" rx="3" />
+                <path d="M5 11v2a7 7 0 0 0 14 0v-2M12 20v2M8 22h8" /></svg
+              >Capture
+            </div>
+            <div class="nav-item">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m14 5 5-1-1 5-4 1-6 10-4-4 10-6Z" /></svg
+              >Maintenance
+            </div>
+            <div class="nav-item">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 7h7l2-3h9v16H3V7Z" /></svg
+              >Locations
+            </div>
+            <div class="nav-group">Planning &amp; records</div>
+            <div class="nav-text">Insurance</div>
+            <div class="nav-text">Incidents</div>
+            <div class="nav-text">Accounting</div>
+            <div class="nav-text">Reports</div>
+            <div class="nav-group">Manage</div>
+            <div class="nav-text">Asset types · Rules</div>
+            <div class="nav-text">Activity · Team · Settings</div>
+            <div class="nav-bottom">
+              Help &amp; guidance
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 11v6M12 7v.2" />
+              </svg>
+            </div>
+          </aside>
+          <main class="mock-main">
+            <div class="row between">
+              <div>
+                <div class="breadcrumb">Quartermaster / Assets</div>
+                <h2>Assets</h2>
+                <p class="muted">See what you have and what needs attention.</p>
+              </div>
+              <span class="btn primary"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 5v14M5 12h14" /></svg
+                >Add an asset</span
+              >
+            </div>
+            <div class="stat-strip">
+              <div><b>24</b><span>Assets recorded</span></div>
+              <div><b>4</b><span>Need attention</span></div>
+              <div><b>3</b><span>Tasks due this month</span></div>
+            </div>
+            <div class="toolbar">
+              <span class="search-box"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="10.5" cy="10.5" r="6.5" />
+                  <path d="m16 16 5 5" /></svg
+                >Search name, location, model or tag</span
+              ><span class="btn">Filters · 2</span
+              ><span class="btn"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 16V3m-4 4 4-4 4 4M4 14v7h16v-7" /></svg
+                >Export</span
+              >
+            </div>
+            <div class="row filter-row">
+              <span class="badge neutral">Main building ×</span
+              ><span class="badge neutral">Active assets ×</span
+              ><span class="text-link">Clear filters</span
+              ><span class="push muted">Saved views ⌄</span>
+            </div>
+            <div class="table-card">
+              <table class="asset-table">
+                <thead>
+                  <tr>
+                    <th class="check-col">□</th>
+                    <th>Asset</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th class="num">Open tasks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>□</td>
+                    <td>
+                      <strong>Roof air conditioner</strong
+                      ><small>Air conditioner · AC-014</small>
+                    </td>
+                    <td>Main building<small>Roof · northwest</small></td>
+                    <td><span class="badge warning">Needs attention</span></td>
+                    <td class="num">2</td>
+                  </tr>
+                  <tr>
+                    <td>□</td>
+                    <td>
+                      <strong>Kitchen refrigerator</strong
+                      ><small>Appliance · AP-003</small>
+                    </td>
+                    <td>Fellowship hall<small>Kitchen</small></td>
+                    <td><span class="badge success">In service</span></td>
+                    <td class="num">0</td>
+                  </tr>
+                  <tr>
+                    <td>□</td>
+                    <td>
+                      <strong>Office air conditioner</strong
+                      ><small>Air conditioner · AC-008</small>
+                    </td>
+                    <td>Office wing<small>Ground level</small></td>
+                    <td><span class="badge success">In service</span></td>
+                    <td class="num">1</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="row between table-footer">
+                <span>Showing 1–3 of 12 matching assets</span
+                ><span>Previous &nbsp; <b>Next →</b></span>
+              </div>
+            </div>
+            <p class="small muted">
+              Values not recorded are shown as “Not recorded,” never silently
+              treated as zero.
+            </p>
+          </main>
+        </div>
+        <div class="caption-grid">
+          <div>
+            <b>01 · Stable orientation</b>
+            <p>Workspace and current destination stay visible.</p>
+          </div>
+          <div>
+            <b>02 · Visible scope</b>
+            <p>Applied filters and matching count stay together.</p>
+          </div>
+          <div>
+            <b>03 · Specific next step</b>
+            <p>Add, inspect, or export—without competing accents.</p>
+          </div>
+        </div>
+        <p class="specimen-caption">
+          Proposed UI · illustrative records only · specimens are scaled;
+          written component dimensions are authoritative.
+        </p>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">06 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-9"
+      aria-label="Page 7: Give each asset a clear story."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>07 / Asset detail specimen</span>
+      </header>
+      <div class="heading">
+        <h1>Give each asset a clear story.</h1>
+        <p class="deck">
+          Start with identity, location, condition, and upcoming work. Put
+          editing and deeper records in named sections.
+        </p>
+      </div>
+      <div class="body">
+        <div class="detail-frame">
+          <div class="breadcrumb">
+            Assets / Main building / Roof air conditioner
+          </div>
+          <div class="row between">
+            <div>
+              <h2>Roof air conditioner</h2>
+              <p class="muted">
+                AC-014 · Main building › Roof › Northwest corner
+              </p>
+            </div>
+            <div class="row">
+              <span class="badge warning">Needs attention</span
+              ><span class="btn"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m4 15 11-11 5 5L9 20l-6 1 1-6Zm9-9 5 5" /></svg
+                >Edit asset</span
+              >
+            </div>
+          </div>
+          <div class="tabs">
+            <b>Overview</b><span>Photos</span><span>Maintenance</span
+            ><span>Readings</span><span>History</span>
+          </div>
+          <div class="detail-grid">
+            <div>
+              <div class="photo-placeholder">
+                <svg
+                  viewBox="0 0 320 150"
+                  class="hvac"
+                  aria-label="Illustrated equipment placeholder"
+                >
+                  <path d="M30 120h260" stroke="#C5D6CC" stroke-width="3" />
+                  <path
+                    d="m78 40 28-16h138l-28 16Z"
+                    fill="#C9DCD2"
+                    stroke="#81908C"
+                  />
+                  <path d="M78 40h138v78H78Z" fill="#E7EDE6" stroke="#81908C" />
+                  <path
+                    d="m216 40 28-16v78l-28 16Z"
+                    fill="#AFC6B8"
+                    stroke="#81908C"
+                  />
+                  <circle
+                    cx="120"
+                    cy="79"
+                    r="26"
+                    fill="#F5F6F2"
+                    stroke="#81908C"
+                  />
+                  <circle cx="120" cy="79" r="6" fill="#81908C" />
+                  <path
+                    d="m120 58 5 15 16 6-16 5-5 16-5-16-16-5 16-6Z"
+                    fill="#8DA99B"
+                  />
+                  <path
+                    d="M162 60h36m-36 9h36m-36 9h36m-36 9h36m-36 9h36"
+                    stroke="#81908C"
+                    stroke-width="3"
+                  />
+                  <rect x="87" y="119" width="15" height="6" fill="#52656E" />
+                  <rect
+                    x="199"
+                    y="119"
+                    width="15"
+                    height="6"
+                    fill="#52656E"
+                  /></svg
+                ><span>Whole unit photo · illustration placeholder</span>
+              </div>
+              <div class="data-grid">
+                <div><span>Asset type</span><b>Air conditioner</b></div>
+                <div><span>Asset tag</span><b>AC-014</b></div>
+                <div><span>Manufacturer</span><b>Not recorded</b></div>
+                <div><span>Serial number</span><b>Not recorded</b></div>
+              </div>
+            </div>
+            <div>
+              <div class="task-card">
+                <div class="row between">
+                  <h3>Upcoming maintenance</h3>
+                  <span class="text-link">View all</span>
+                </div>
+                <b>Replace tubing insulation</b>
+                <p>Due Dec 31, 2026</p>
+                <span class="badge warning">Open</span>
+                <p class="small">
+                  Weathering noted during the last inspection.
+                </p>
+                <span class="btn"
+                  ><svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m8 5 7 7-7 7" /></svg
+                  >View task</span
+                >
+              </div>
+              <div class="access-note">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v6M12 7v.2" />
+                </svg>
+                <div>
+                  <b>Access note</b>
+                  <p>
+                    Coil cover screws are rounded out. Plan additional work
+                    before coil maintenance.
+                  </p>
+                </div>
+              </div>
+              <div class="row between" style="margin-top: 18px">
+                <span class="muted">Details last updated Oct 6, 2026</span
+                ><span class="text-link">View history</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="caption-grid">
+          <div>
+            <b>Keep context in view</b>
+            <p>Use a location path; do not lead with internal UUIDs.</p>
+          </div>
+          <div>
+            <b>Separate read and edit</b>
+            <p>Read-only facts are text, not a wall of disabled inputs.</p>
+          </div>
+          <div>
+            <b>Keep consequences visible</b>
+            <p>Access constraints stay near the relevant work.</p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">07 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-10"
+      aria-label="Page 8: Ask clearly. Explain just enough."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>08 / Forms &amp; validation</span>
+      </header>
+      <div class="heading">
+        <h1>Ask clearly. Explain just enough.</h1>
+        <p class="deck">
+          Visible labels are permanent. A placeholder is an example, never the
+          only explanation of a field.
+        </p>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div class="panel form-specimen">
+            <div class="row between">
+              <h3>Financial details</h3>
+              <span class="badge neutral">Optional</span>
+            </div>
+            <p class="muted">Add what you know. You can complete this later.</p>
+            <div class="field">
+              <div class="field-label">
+                Replacement cost (USD)
+                <span class="help"
+                  ><svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 11v6M12 7v.2" /></svg
+                ></span>
+              </div>
+              <div class="input">12,500.00</div>
+              <div class="hint">
+                Estimated cost to replace this asset today.
+              </div>
+            </div>
+            <div class="cols narrow-gap">
+              <div class="field">
+                <div class="field-label">Purchase date</div>
+                <div class="input">Oct 6, 2020</div>
+                <div class="hint">Use the date on your purchase record.</div>
+              </div>
+              <div class="field">
+                <div class="field-label">
+                  Useful life (years)
+                  <span class="help"
+                    ><svg
+                      class="icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 11v6M12 7v.2" /></svg
+                  ></span>
+                </div>
+                <div class="input">10</div>
+                <div class="hint">Used in depreciation estimates.</div>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-label">
+                Asset tag <span class="optional">(optional)</span>
+              </div>
+              <div class="input">AC-014</div>
+              <div class="hint">
+                A label your team uses to identify this asset.
+              </div>
+            </div>
+            <div class="field error-field">
+              <div class="field-label">Asset name</div>
+              <div class="input">&nbsp;</div>
+              <div class="error-copy">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m12 3 10 18H2L12 3Z" />
+                  <path d="M12 9v5m0 3v.2" /></svg
+                >Enter an asset name, such as “Roof air conditioner.”
+              </div>
+            </div>
+            <div class="row" style="margin-top: 18px">
+              <span class="btn primary">Save changes</span
+              ><span class="btn quiet">Cancel</span>
+            </div>
+          </div>
+          <div>
+            <h3>Field anatomy</h3>
+            <ul>
+              <li>
+                <b>Label:</b> a familiar noun phrase, above the input. State
+                units in the label or a clearly associated unit control.
+              </li>
+              <li>
+                <b>Helper text:</b> one useful sentence for requirements or
+                interpretation. Keep it visible while typing.
+              </li>
+              <li>
+                <b>Optional detail:</b> an information button for examples,
+                purpose, or calculation rules. Do not conceal required
+                instructions there.
+              </li>
+              <li>
+                <b>Error:</b> explain what to fix and how. Keep entered values;
+                do not rely on a red border.
+              </li>
+            </ul>
+            <h3>Interaction rules</h3>
+            <ul>
+              <li>
+                Use one field per row on phones. Pair fields only when their
+                relationship is obvious and space is sufficient.
+              </li>
+              <li>
+                Mark required fields in text, or state a consistent
+                required/optional convention at the group start.
+              </li>
+              <li>
+                Validate after a meaningful interaction or submission, not on
+                every first keystroke.
+              </li>
+              <li>
+                On failed submission, focus an error summary linked to invalid
+                fields. Associate each inline error with its input.
+              </li>
+            </ul>
+            <p class="small muted">
+              Avoid surprise autosave. Distinguish “Save draft” from “Create
+              asset.” Guard navigation only when edits would actually be lost.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">08 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-11"
+      aria-label="Page 9: Explain what it means—and why it matters."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>09 / Explanatory help</span>
+      </header>
+      <div class="heading">
+        <h1>Explain what it means—and why it matters.</h1>
+        <p class="deck">
+          Start with a clear label. Add the smallest explanation that removes
+          uncertainty.
+        </p>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div>
+            <div class="help-demo">
+              <div class="field-label">
+                Replacement cost (USD)
+                <span class="help active"
+                  ><svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 11v6M12 7v.2" /></svg
+                ></span>
+              </div>
+              <div class="input">12,500.00</div>
+              <div class="hint">
+                Estimated cost to replace this asset today.
+              </div>
+              <div class="help-pop">
+                <div class="row between">
+                  <h3>About replacement cost</h3>
+                  <svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="m6 6 12 12M6 18 18 6" />
+                  </svg>
+                </div>
+                <p>
+                  The amount you expect to pay for an equivalent replacement,
+                  including installation if your estimate includes it.
+                </p>
+                <p>
+                  <b>Why we ask:</b> this supports planning and insurance
+                  summaries. It is different from purchase price and depreciated
+                  book value.
+                </p>
+                <p>
+                  <b>If you do not know:</b> leave it blank. Do not enter zero
+                  to mean unknown.
+                </p>
+                <span class="text-link"
+                  >How financial estimates are used →</span
+                >
+              </div>
+            </div>
+            <div class="small muted" style="margin-top: 16px">
+              Desktop help: 320–400 px wide, at least 16 px from viewport edges.
+              On a phone, expand inline. Outside click or Escape closes it; do
+              not auto-dismiss while someone is reading.
+            </div>
+            <aside class="note soft">
+              <strong>A repeatable help-content shape</strong>
+              <p>
+                Meaning → why it matters → example or format → what to do if
+                unknown. Add an effect or privacy warning when relevant.
+              </p>
+            </aside>
+          </div>
+          <div>
+            <table class="spec compact">
+              <thead>
+                <tr>
+                  <th>Use</th>
+                  <th>For</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Label</td>
+                  <td>The name or action itself: “Save draft”</td>
+                </tr>
+                <tr>
+                  <td>Persistent helper</td>
+                  <td>Required format, units, important consequences</td>
+                </tr>
+                <tr>
+                  <td>Tooltip</td>
+                  <td>
+                    A brief, noninteractive clarification; never the only
+                    instruction
+                  </td>
+                </tr>
+                <tr>
+                  <td>Information disclosure</td>
+                  <td>Domain concepts, examples, calculation explanations</td>
+                </tr>
+                <tr>
+                  <td>Help page / side panel</td>
+                  <td>Multi-step procedures or a full reference</td>
+                </tr>
+              </tbody>
+            </table>
+            <h3 style="margin-top: 18px">Behavior contract</h3>
+            <ul>
+              <li>
+                Make the (i) a real button with an accessible name, such as
+                “About replacement cost.” Give its hit area 44 × 44 px even if
+                the icon is 20 px.
+              </li>
+              <li>
+                Open on click, tap, Enter, or Space. Publish expanded state and
+                the controlled content relationship. [5]
+              </li>
+              <li>
+                A nonmodal help panel keeps normal focus order; do not trap
+                focus. Escape closes it; an explicit close button is available.
+                Return focus if focus was inside when closed.
+              </li>
+              <li>
+                Hover/focus tooltips must be dismissible, hoverable, and
+                persistent while needed. They contain no links or controls.
+                Essential guidance remains visible without hover. [3]
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">09 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-12"
+      aria-label="Page 10: A small, consistent vocabulary of actions."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>10 / Controls &amp; states</span>
+      </header>
+      <div class="heading">
+        <h1>A small, consistent vocabulary of actions.</h1>
+        <p class="deck">
+          Visual priority follows consequence and frequency—not the number of
+          controls on the page.
+        </p>
+      </div>
+      <div class="body">
+        <div class="control-specs">
+          <div>
+            <h3>Primary</h3>
+            <span class="btn primary"
+              ><svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m5 12 4 4L19 6" /></svg
+              >Save changes</span
+            >
+            <p>One dominant action per working area. Teal fill, white text.</p>
+          </div>
+          <div>
+            <h3>Secondary</h3>
+            <span class="btn"
+              ><svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M8 6 9 3h6l1 3h5v14H3V6Z" />
+                <circle cx="12" cy="13" r="4" /></svg
+              >Add a photo</span
+            >
+            <p>
+              White surface, control border, ink text. Support the main task.
+            </p>
+          </div>
+          <div>
+            <h3>Tertiary</h3>
+            <span class="btn quiet">Cancel</span>
+            <p>
+              Text treatment, visible focus, full hit target. No ghostly gray
+              text.
+            </p>
+          </div>
+          <div>
+            <h3>Destructive</h3>
+            <span class="btn danger">Delete asset</span>
+            <p>
+              Red only where a destructive choice is being deliberately
+              confirmed.
+            </p>
+          </div>
+        </div>
+        <div class="state-row">
+          <div><span class="btn primary">Save changes</span><b>Default</b></div>
+          <div><span class="btn hover">Save changes</span><b>Hover</b></div>
+          <div><span class="btn pressed">Save changes</span><b>Pressed</b></div>
+          <div>
+            <span class="btn primary focus">Save changes</span
+            ><b>Keyboard focus</b>
+          </div>
+          <div>
+            <span class="btn loading"
+              ><svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 6v6l4 2" /></svg
+              >Saving…</span
+            ><b>Pending</b>
+          </div>
+        </div>
+        <div class="cols" style="margin-top: 22px">
+          <div>
+            <h3>Control rules</h3>
+            <ul>
+              <li>
+                44 px minimum hit height; 48 px for capture. At least 8 px
+                between neighboring actions. Icon-only targets are square.
+              </li>
+              <li>
+                Use action + object: “Add location,” “Run report,” “Delete
+                photo.” Use tooltips for icon-only buttons plus accessible
+                names.
+              </li>
+              <li>
+                Show a pending label, prevent duplicate submission, and preserve
+                button width to avoid movement.
+              </li>
+              <li>
+                Disabled controls must have an adjacent reason when it is not
+                obvious. Do not reduce the whole control to unreadable opacity.
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3>Use the right shape</h3>
+            <ul>
+              <li>
+                Checkboxes select independent options; radios choose one of a
+                small visible set.
+              </li>
+              <li>
+                Use switches only for settings that take effect immediately. Use
+                a checkbox for a setting saved with a form.
+              </li>
+              <li>
+                A segmented control is for a small set of peer views, not
+                unrelated destinations.
+              </li>
+              <li>
+                Menus contain secondary actions. Do not hide the only Save,
+                required step, or current error in a menu.
+              </li>
+            </ul>
+            <p class="small muted">
+              Focus: 3 px #315ECA outer ring with a 2 px white separation. Never
+              remove focus without an equally visible replacement. Use a native
+              button, not a styled div.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">10 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-13"
+      aria-label="Page 11: Dense information can still be generous."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>11 / Tables, search &amp; selection</span>
+      </header>
+      <div class="heading">
+        <h1>Dense information can still be generous.</h1>
+        <p class="deck">
+          Support scanning, comparison, and a deliberate next step without
+          turning every row into a control panel.
+        </p>
+      </div>
+      <div class="body">
+        <div class="table-card">
+          <table class="asset-table">
+            <thead>
+              <tr>
+                <th class="check-col">☑</th>
+                <th>Asset</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th class="num">Open tasks</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>☑</td>
+                <td>
+                  <strong>Roof air conditioner</strong
+                  ><small>Air conditioner · AC-014</small>
+                </td>
+                <td>Main building<small>Roof · northwest</small></td>
+                <td><span class="badge warning">Needs attention</span></td>
+                <td class="num">2</td>
+              </tr>
+              <tr>
+                <td>☑</td>
+                <td>
+                  <strong>Kitchen refrigerator</strong
+                  ><small>Appliance · AP-003</small>
+                </td>
+                <td>Fellowship hall<small>Kitchen</small></td>
+                <td><span class="badge success">In service</span></td>
+                <td class="num">0</td>
+              </tr>
+              <tr>
+                <td>☑</td>
+                <td>
+                  <strong>Office air conditioner</strong
+                  ><small>Air conditioner · AC-008</small>
+                </td>
+                <td>Office wing<small>Ground level</small></td>
+                <td><span class="badge success">In service</span></td>
+                <td class="num">1</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="row bulk-bar">
+          <span class="badge info">2 selected</span><b>Selected on this page</b
+          ><span class="push"
+            ><span class="btn"
+              ><svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 16V3m-4 4 4-4 4 4M4 14v7h16v-7" /></svg
+              >Export selected</span
+            ><span class="btn quiet">Clear selection</span></span
+          >
+        </div>
+        <div class="cols" style="margin-top: 26px">
+          <div>
+            <h3>Scanning & comparison</h3>
+            <ul>
+              <li>
+                Lead with asset name and a useful identifier. Keep location and
+                condition close; put secondary metadata on a second line.
+              </li>
+              <li>
+                Align text left, amounts right, and column headings with their
+                values. Show currency, units, and date meaning.
+              </li>
+              <li>
+                Use thin horizontal dividers; avoid a full spreadsheet grid.
+                Header tint is subtle and not the only header cue.
+              </li>
+              <li>
+                Use an actual asset-name link. A row may be clickable as an
+                enhancement, never as the only keyboard route.
+              </li>
+            </ul>
+            <p class="small muted">
+              If sorting is supported, make the column heading a button and
+              expose its sort state. Do not draw sort arrows for an unsupported
+              operation.
+            </p>
+          </div>
+          <div>
+            <h3>Search, filters & bulk work</h3>
+            <ul>
+              <li>
+                Label the search scope. “Search assets” does not imply a
+                natural-language assistant.
+              </li>
+              <li>
+                Show applied filters, result count, and a clear reset action.
+                Preserve filters when returning from a detail page.
+              </li>
+              <li>
+                Make selection scope explicit: this page, loaded records, or
+                every matching result. Never silently widen it.
+              </li>
+              <li>
+                At narrow widths, use asset cards with labeled key facts. For
+                true comparison tables, provide a labeled horizontal-scroll
+                region and an alternative summary.
+              </li>
+            </ul>
+            <p class="small muted">
+              Pagination/loading and export scope must agree. Never label a
+              partial-page total as an estate total. Preserve filter and
+              selection context through errors.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">11 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-14"
+      aria-label="Page 12: Explain the number before decorating it."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>12 / Reports &amp; charts</span>
+      </header>
+      <div class="heading">
+        <h1>Explain the number before decorating it.</h1>
+        <p class="deck">
+          Reports must reveal scope, assumptions, completeness, and what the
+          user can do with the result.
+        </p>
+      </div>
+      <div class="body">
+        <div class="report-frame">
+          <div class="row between">
+            <div>
+              <div class="eyebrow">INSURANCE SUMMARY · ILLUSTRATIVE</div>
+              <h2>Replacement cost by location</h2>
+              <p class="muted">Recorded estimates · As of Oct 6, 2026 · USD</p>
+            </div>
+            <span class="btn"
+              ><svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M12 16V3m-4 4 4-4 4 4M4 14v7h16v-7" /></svg
+              >Download report</span
+            >
+          </div>
+          <div class="report-grid">
+            <div>
+              <div class="bar-line">
+                <span>Main building</span>
+                <div><i style="width: 88%"></i></div>
+                <b>$48,000</b>
+              </div>
+              <div class="bar-line">
+                <span>Fellowship hall</span>
+                <div><i style="width: 60%"></i></div>
+                <b>$32,500</b>
+              </div>
+              <div class="bar-line">
+                <span>Office wing</span>
+                <div><i style="width: 24%"></i></div>
+                <b>$13,000</b>
+              </div>
+              <div class="axis">
+                0 <span>USD · linear scale starts at zero</span>
+              </div>
+              <span class="text-link">View the data table</span>
+            </div>
+            <aside>
+              <span class="muted">Recorded replacement cost</span
+              ><strong class="report-total">$93,500</strong>
+              <p>20 of 24 assets have a recorded estimate.</p>
+              <span class="badge warning"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m12 3 10 18H2L12 3Z" />
+                  <path d="M12 9v5m0 3v.2" /></svg
+                >4 estimates missing</span
+              >
+              <p class="small">
+                Missing values are excluded, not treated as zero.
+              </p>
+            </aside>
+          </div>
+        </div>
+        <div class="cols" style="margin-top: 22px">
+          <div>
+            <h3>Chart grammar</h3>
+            <ul>
+              <li>
+                Prefer labeled horizontal bars for category comparisons and a
+                line for change over time.
+              </li>
+              <li>
+                Use direct labels and restrained gridlines. Avoid 3D effects,
+                gradients, decorative gauges, and tiny donut segments.
+              </li>
+              <li>
+                Do not encode categories by hue alone. Provide labels,
+                accessible text, and a data table.
+              </li>
+              <li>
+                For multiple series, use teal #17635B, blue #2C5DA8, violet
+                #6952A3, and ochre #875200 with line styles or patterns.
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3>Reporting grammar</h3>
+            <ul>
+              <li>
+                Show applied filters, as-of date, units, and whether figures are
+                recorded, calculated, estimated, or partial.
+              </li>
+              <li>
+                Place assumptions next to the result; offer calculation detail
+                through a labeled disclosure.
+              </li>
+              <li>
+                Make a printable/exported report self-contained: title,
+                workspace, scope, generation date, units, caveats, and page
+                numbers.
+              </li>
+              <li>
+                Never present management depreciation estimates as a certified
+                insurance settlement, tax calculation, or posted ledger balance.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">12 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-15"
+      aria-label="Page 13: One useful step at a time."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>13 / Mobile capture</span>
+      </header>
+      <div class="heading">
+        <h1>One useful step at a time.</h1>
+        <p class="deck">
+          Large targets, clear recording state, and a visible manual path help
+          people work with their hands and attention occupied.
+        </p>
+      </div>
+      <div class="body">
+        <div class="phones">
+          <div class="phone">
+            <div class="phone-top">
+              <b>Quartermaster</b
+              ><svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </div>
+            <div class="phone-body">
+              <div class="eyebrow">NEW ASSET · CAPTURE</div>
+              <h2>What are we adding?</h2>
+              <div class="chat">
+                Tell me about the asset and where it is located.
+              </div>
+              <div class="voice-orb">
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="3" width="6" height="12" rx="3" />
+                  <path d="M5 11v2a7 7 0 0 0 14 0v-2M12 20v2M8 22h8" />
+                </svg>
+              </div>
+              <p class="center">
+                <b>Ready to record</b><br /><span class="muted"
+                  >Tap to speak · up to 20 seconds</span
+                >
+              </p>
+              <span class="btn primary"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="3" width="6" height="12" rx="3" />
+                  <path d="M5 11v2a7 7 0 0 0 14 0v-2M12 20v2M8 22h8" /></svg
+                >Record answer</span
+              ><span class="text-link">Type an answer instead</span>
+              <div class="phone-note">
+                Stay online. Save your draft before leaving.
+              </div>
+            </div>
+            <div class="phone-bottom">01 · Ask</div>
+          </div>
+          <div class="phone">
+            <div class="phone-top">
+              <b>Quartermaster</b
+              ><svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </div>
+            <div class="phone-body">
+              <div class="eyebrow">ADD A PHOTO</div>
+              <h2>Photograph the nameplate</h2>
+              <p class="muted">Keep the model and serial number in focus.</p>
+              <div class="camera-frame">
+                <div class="nameplate">
+                  MODEL &nbsp; EX-240<br />SERIAL &nbsp; 001234<br />VOLTS
+                  &nbsp; 208/230
+                </div>
+                <span>Camera preview</span>
+              </div>
+              <span class="btn primary"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M8 6 9 3h6l1 3h5v14H3V6Z" />
+                  <circle cx="12" cy="13" r="4" /></svg
+                >Take photo</span
+              ><span class="btn">Choose existing photo</span
+              ><span class="text-link">Skip this photo</span>
+            </div>
+            <div class="phone-bottom">02 · Capture</div>
+          </div>
+          <div class="phone">
+            <div class="phone-top">
+              <b>Quartermaster</b
+              ><svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </div>
+            <div class="phone-body">
+              <div class="eyebrow">HUMAN REVIEW</div>
+              <h2>Does this look right?</h2>
+              <span class="badge ai"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v6M12 7v.2" /></svg
+                >AI suggestion</span
+              >
+              <div class="field">
+                <div class="field-label">Asset name</div>
+                <div class="input">Roof air conditioner</div>
+              </div>
+              <div class="field">
+                <div class="field-label">Location</div>
+                <div class="input">Main building · northwest roof</div>
+              </div>
+              <div class="phone-task">
+                <b>Proposed maintenance</b>
+                <p>Replace tubing insulation<br />Due Dec 31, 2026</p>
+              </div>
+              <p class="small">☑ I have reviewed these details.</p>
+              <span class="btn primary"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m5 12 4 4L19 6" /></svg
+                >Create reviewed asset</span
+              ><span class="text-link">Save draft</span>
+            </div>
+            <div class="phone-bottom">03 · Confirm</div>
+          </div>
+        </div>
+        <div class="caption-grid">
+          <div>
+            <b>Recording is explicit</b>
+            <p>
+              No always-listening behavior. Stop or discard stays available.
+            </p>
+          </div>
+          <div>
+            <b>Camera is optional</b>
+            <p>
+              Request permission in context. File upload and manual entry remain
+              usable.
+            </p>
+          </div>
+          <div>
+            <b>Review is separate from saving</b>
+            <p>
+              Read back or display proposed facts. A model does not authorize a
+              save.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">13 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-16"
+      aria-label="Page 14: Make assistance visible—and uncertainty correctable."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>14 / AI &amp; media</span>
+      </header>
+      <div class="heading">
+        <h1>Make assistance visible—and uncertainty correctable.</h1>
+        <p class="deck">
+          AI is a data-entry partner. The person remains in control of the
+          record and of physical work.
+        </p>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div class="panel">
+            <div class="row between">
+              <h3>Nameplate interpretation</h3>
+              <span class="badge ai"
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v6M12 7v.2" /></svg
+                >AI suggestion</span
+              >
+            </div>
+            <div class="ai-proof">
+              <div class="nameplate">
+                MODEL &nbsp; EX-240<br />SERIAL &nbsp; 001234<br />VOLTS &nbsp;
+                208/230
+              </div>
+              <p class="small muted">
+                Nameplate image · illustrative crop<br />Open original view to
+                inspect detail
+              </p>
+            </div>
+            <div class="suggestion-row">
+              <span>Model</span><b>EX-240</b
+              ><span class="btn small-btn">Use value</span>
+            </div>
+            <div class="suggestion-row">
+              <span>Serial number</span><b>001234</b
+              ><span class="badge warning">Check against photo</span>
+            </div>
+            <p>
+              “I can read the model, but the serial number needs a closer look.
+              Please check it before saving.”
+            </p>
+            <div class="row">
+              <span class="btn primary">Apply to review form</span
+              ><span class="btn quiet">Edit manually</span>
+            </div>
+            <p class="small muted">
+              Applying a suggestion changes the review form, not the saved
+              asset.
+            </p>
+          </div>
+          <div>
+            <h3>Presentation rules</h3>
+            <ul>
+              <li>
+                Keep extracted values near the source photo. Provide zoom,
+                rotate/view controls where supported, and a full-image view.
+              </li>
+              <li>
+                Use factual uncertainty language: “Not readable” or “Please
+                confirm.” Do not display precision percentages unless confidence
+                is calibrated and explained.
+              </li>
+              <li>
+                Show which fields would change before applying a suggestion.
+                Preserve existing values unless the person approves replacement.
+              </li>
+              <li>
+                Give photos a human-readable purpose: Nameplate, Whole unit,
+                Damage detail, or Other. Never infer condition or maintenance
+                history from a generic image.
+              </li>
+            </ul>
+            <aside class="note soft">
+              <strong>A safe assistant does not push for access</strong>
+              <p>
+                Accept “I cannot take that photo.” Record access constraints and
+                volunteered readings. Never turn a visual prompt into an
+                instruction to open energized equipment or attach instruments.
+              </p>
+            </aside>
+            <h3 style="margin-top: 16px">Privacy in context</h3>
+            <p>
+              Explain microphone/camera use before the permission prompt. Label
+              recording state. Raw audio is not retained; transcript text
+              expires after 15 days. Optional device-spoken replies disclose the
+              device speech-service boundary.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">14 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-17"
+      aria-label="Page 15: Always tell the truth about what happened."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>15 / Feedback &amp; resilience</span>
+      </header>
+      <div class="heading">
+        <h1>Always tell the truth about what happened.</h1>
+        <p class="deck">
+          A calm interface can still be explicit about waiting, errors, and
+          uncertain outcomes.
+        </p>
+      </div>
+      <div class="body">
+        <div class="feedback-grid">
+          <div class="feedback-card">
+            <div class="row">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="4" y="4" width="6" height="6" rx="1" />
+                <rect x="14" y="4" width="6" height="6" rx="1" />
+                <rect x="4" y="14" width="6" height="6" rx="1" />
+                <rect x="14" y="14" width="6" height="6" rx="1" />
+              </svg>
+              <h3>No assets yet</h3>
+            </div>
+            <p>
+              Start with one asset. You can type its details or use guided
+              capture.
+            </p>
+            <span class="btn primary">Add your first asset</span>
+          </div>
+          <div class="feedback-card info">
+            <div class="row">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              <h3>Waking your workspace…</h3>
+            </div>
+            <p>
+              After a quiet period, this may take about a minute. Your request
+              is still in progress.
+            </p>
+            <div class="skeleton"></div>
+            <div class="skeleton short"></div>
+          </div>
+          <div class="feedback-card success">
+            <div class="row">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m5 12 4 4L19 6" />
+              </svg>
+              <h3>Changes saved</h3>
+            </div>
+            <p>Roof air conditioner was updated on the server.</p>
+            <span class="small">Show only after confirmed completion.</span>
+          </div>
+          <div class="feedback-card warning">
+            <div class="row">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m12 3 10 18H2L12 3Z" />
+                <path d="M12 9v5m0 3v.2" />
+              </svg>
+              <h3>Connection lost</h3>
+            </div>
+            <p>
+              Your unsaved input is still in this tab. Reconnect, then retry. Do
+              not close this tab.
+            </p>
+            <span class="btn">Retry save</span>
+          </div>
+          <div class="feedback-card danger">
+            <div class="row">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m12 3 10 18H2L12 3Z" />
+                <path d="M12 9v5m0 3v.2" />
+              </svg>
+              <h3>This record changed</h3>
+            </div>
+            <p>
+              Someone saved a newer version. Review it before applying your
+              changes.
+            </p>
+            <span class="btn">Review newer version</span>
+          </div>
+          <div class="feedback-card">
+            <div class="row">
+              <svg
+                class="icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 11v6M12 7v.2" />
+              </svg>
+              <h3>Sign in again to continue</h3>
+            </div>
+            <p>
+              Sign in in a new tab, then refresh this session. Keep this tab
+              open to preserve unsaved input.
+            </p>
+            <span class="btn">Sign in again</span
+            ><span class="btn quiet">Refresh session</span>
+          </div>
+        </div>
+        <div class="cols" style="margin-top: 18px">
+          <p>
+            <b>Persistent for consequences.</b> Keep errors and recovery actions
+            next to the affected task. Use a brief polite status announcement
+            for routine saves; reserve assertive announcements for a blocker. Do
+            not toast every background event.
+          </p>
+          <p>
+            <b>No invented progress.</b> Use a determinate bar only with a
+            measured denominator. Otherwise show the current stage and elapsed
+            wait. Distinguish “No matches,” “Not loaded,” and “None recorded.”
+            Do not imply offline queuing or device-persistent drafts.
+          </p>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">15 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-18"
+      aria-label="Page 16: Make sensitive actions deliberate."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>16 / Sensitive actions &amp; trust</span>
+      </header>
+      <div class="heading">
+        <h1>Make sensitive actions deliberate.</h1>
+        <p class="deck">
+          Confirmation should explain the target and consequence. It is not a
+          substitute for permissions or recovery controls.
+        </p>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div class="dialog-stage">
+            <div class="dialog">
+              <div class="row between">
+                <h2>Delete this asset?</h2>
+                <svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 6 12 12M6 18 18 6" />
+                </svg>
+              </div>
+              <p>
+                <b>Roof air conditioner</b><br /><span class="muted"
+                  >AC-014 · Main building · northwest roof</span
+                >
+              </p>
+              <p>
+                This removes the asset from active views and starts purging its
+                live records and photos. This action cannot be undone in
+                Quartermaster.
+              </p>
+              <div class="warning-block">
+                <b>About retained backups</b>
+                <p>
+                  Isolated backups may retain copies until expiry, up to 90
+                  days. Deleted content must be purged before a restored
+                  workspace is reopened.
+                </p>
+              </div>
+              <div class="row end">
+                <span class="btn">Cancel</span
+                ><span class="btn danger">Delete asset</span>
+              </div>
+            </div>
+            <p class="small muted">
+              For a whole-workspace deletion, also require its exact name.
+              Default focus goes to Cancel; destructive confirmation requires
+              recent authentication.
+            </p>
+          </div>
+          <div>
+            <h3>Disclosure at the point of consequence</h3>
+            <table class="spec compact">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Plain-language policy</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Original photos</td>
+                  <td>Kept for 15 days</td>
+                </tr>
+                <tr>
+                  <td>Resized asset photos</td>
+                  <td>Kept until the user, asset, or workspace deletes them</td>
+                </tr>
+                <tr>
+                  <td>Transcripts / unaccepted AI proposals</td>
+                  <td>Expire after 15 days</td>
+                </tr>
+                <tr>
+                  <td>Audit records</td>
+                  <td>Kept for one year</td>
+                </tr>
+                <tr>
+                  <td>Isolated backups / deletion ledger</td>
+                  <td>
+                    Up to 90 days; replay deletions before restored access
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <h3 style="margin-top: 20px">Interaction rules</h3>
+            <ul>
+              <li>
+                Keep Delete separate from Save and ordinary row actions. Confirm
+                the exact target, including bulk-selection scope.
+              </li>
+              <li>
+                After acceptance, show “Removed from active views; purge in
+                progress” until the worker confirms completion.
+              </li>
+              <li>
+                Do not offer an Undo control unless the operation is genuinely
+                reversible.
+              </li>
+              <li>
+                A modal has a title, accessible description, contained focus,
+                Escape behavior, and focus restoration. If its initiating item
+                disappears, return to a sensible surviving control.
+              </li>
+            </ul>
+            <p class="small muted">
+              Compliance holds remain a future product decision. Do not imply
+              that a hold, legal certification, or guaranteed restore has been
+              implemented by styling a badge.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">16 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-19"
+      aria-label="Page 17: Write for people, not the database."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>17 / Language &amp; help library</span>
+      </header>
+      <div class="heading">
+        <h1>Write for people, not the database.</h1>
+        <p class="deck">
+          Use familiar terms, specific verbs, and short explanations. Be
+          respectful—not breezy, cute, or alarmist.
+        </p>
+      </div>
+      <div class="body">
+        <table class="spec compact">
+          <thead>
+            <tr>
+              <th>Avoid</th>
+              <th>Prefer</th>
+              <th>Why / accompanying help</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Entity / object / estate item</td>
+              <td>Asset</td>
+              <td>
+                One consistent noun for equipment or other tracked property.
+              </td>
+            </tr>
+            <tr>
+              <td>Work</td>
+              <td>Maintenance</td>
+              <td>Names the activity people are looking for.</td>
+            </tr>
+            <tr>
+              <td>Types</td>
+              <td>Asset types</td>
+              <td>Makes the scope of the setting clear.</td>
+            </tr>
+            <tr>
+              <td>Submit / Execute</td>
+              <td>Save changes / Run report</td>
+              <td>Names the action and its result.</td>
+            </tr>
+            <tr>
+              <td>Depreciated NBV</td>
+              <td>
+                Estimated book value
+                <span class="help"
+                  ><svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 11v6M12 7v.2" /></svg
+                ></span>
+              </td>
+              <td>
+                Explain cost, useful life, depreciation, and the estimate’s
+                limits.
+              </td>
+            </tr>
+            <tr>
+              <td>Compliance status</td>
+              <td>Data completeness</td>
+              <td>Use only the claim the calculation actually supports.</td>
+            </tr>
+            <tr>
+              <td>Null / — / 0 for missing data</td>
+              <td>Not recorded</td>
+              <td>Zero is a real value; missing information is different.</td>
+            </tr>
+            <tr>
+              <td>Oops! Something went wrong.</td>
+              <td>We could not confirm the save.</td>
+              <td>Keep input and show the next safe recovery action.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="cols" style="margin-top: 22px">
+          <div>
+            <h3>Reusable help examples</h3>
+            <p>
+              <b>Useful life:</b> “How many years you expect to use this asset.
+              Used to estimate depreciation—not to predict its failure date.”
+            </p>
+            <p>
+              <b>Access constraints:</b> “Anything that makes inspection or
+              maintenance harder, such as damaged fasteners or a locked
+              enclosure.”
+            </p>
+            <p>
+              <b>Rule preview:</b> “Shows which assets currently match and what
+              the rule would do. Previewing does not change records.”
+            </p>
+          </div>
+          <div>
+            <h3>Formatting conventions</h3>
+            <ul>
+              <li>
+                Dates: “Oct 6, 2026,” not an ambiguous 10/6/26. Show the
+                workspace time zone when a deadline depends on time.
+              </li>
+              <li>
+                Money: currency in the label or heading; consistent decimal
+                precision. Counts are not padded with unnecessary decimals.
+              </li>
+              <li>
+                Measurements: value and unit together, such as 4.3 A. Explain
+                unfamiliar units nearby.
+              </li>
+              <li>
+                Errors explain correction, not fault. Do not expose SQL, raw
+                provider errors, secret identifiers, or implementation jargon.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">17 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-20"
+      aria-label="Page 18: Approachable means usable in more than one way."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>18 / Accessibility, icons &amp; motion</span>
+      </header>
+      <div class="heading">
+        <h1>Approachable means usable in more than one way.</h1>
+        <p class="deck">
+          Target WCAG 2.2 AA. These visual rules support accessibility;
+          implementation and assistive-technology testing must prove it.
+        </p>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div>
+            <h3>Non-negotiable acceptance</h3>
+            <ul>
+              <li>
+                <b>Keyboard:</b> every action is reachable and operable in a
+                logical order. Include a skip link, clear headings, and visible
+                focus that sticky UI does not obscure.
+              </li>
+              <li>
+                <b>Text & zoom:</b> support text enlargement to 200% and reflow
+                at 320 CSS px (typically a 1280 px viewport at 400% zoom). True
+                two-dimensional tables may use their own scroll region; the page
+                itself should not require horizontal scrolling. [4]
+              </li>
+              <li>
+                <b>Targets:</b> Quartermaster policy is at least 44 × 44 CSS px;
+                capture controls use 48 px. WCAG AA has a 24 × 24 px minimum
+                with defined exceptions; do not confuse that minimum with our
+                preferred size. [8]
+              </li>
+              <li>
+                <b>Names & relationships:</b> labels are programmatically
+                connected; help and errors are described by the correct
+                controls. Visible labels and accessible names agree.
+              </li>
+              <li>
+                <b>Alternatives:</b> voice, camera, dragging, color, or hover is
+                never the only way to complete an essential task.
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3>One icon grammar</h3>
+            <div class="icon-grid">
+              <span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="4" width="6" height="6" rx="1" />
+                  <rect x="14" y="4" width="6" height="6" rx="1" />
+                  <rect x="4" y="14" width="6" height="6" rx="1" />
+                  <rect x="14" y="14" width="6" height="6" rx="1" /></svg
+                ><small>assets</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="10.5" cy="10.5" r="6.5" />
+                  <path d="m16 16 5 5" /></svg
+                ><small>search</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 5v14M5 12h14" /></svg
+                ><small>plus</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M8 6 9 3h6l1 3h5v14H3V6Z" />
+                  <circle cx="12" cy="13" r="4" /></svg
+                ><small>camera</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="3" width="6" height="12" rx="3" />
+                  <path d="M5 11v2a7 7 0 0 0 14 0v-2M12 20v2M8 22h8" /></svg
+                ><small>mic</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m14 5 5-1-1 5-4 1-6 10-4-4 10-6Z" /></svg
+                ><small>work</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 11v6M12 7v.2" /></svg
+                ><small>info</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M12 16V3m-4 4 4-4 4 4M4 14v7h16v-7" /></svg
+                ><small>export</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m4 15 11-11 5 5L9 20l-6 1 1-6Zm9-9 5 5" /></svg
+                ><small>edit</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m5 12 4 4L19 6" /></svg
+                ><small>check</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 6v6l4 2" /></svg
+                ><small>clock</small></span
+              ><span
+                ><svg
+                  class="icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m12 3 10 18H2L12 3Z" />
+                  <path d="M12 9v5m0 3v.2" /></svg
+                ><small>alert</small></span
+              >
+            </div>
+            <p>
+              Use one consistent 24 px outline family with 1.5–2 px rounded
+              strokes. Render at 20 or 24 px; pair unfamiliar icons with text.
+              Use filled shapes only for a deliberate selected state. Do not mix
+              emoji, outline sets, and 3D illustrations.
+            </p>
+            <h3>Motion & imagery</h3>
+            <p>
+              Use 120–180 ms color/opacity transitions and 180–240 ms panel
+              transitions. Respect reduced-motion preferences; remove spatial
+              animation and pulsing. Never animate away an error.
+            </p>
+            <p>
+              Use actual asset photos for evidence. Preserve the full frame when
+              inspection matters; crop only thumbnails with access to the
+              original view. No stock imagery pretending to document a real
+              asset.
+            </p>
+            <aside class="note soft">
+              <strong>Before release</strong>
+              <p>
+                Test keyboard, screen reader, touch, high zoom, long labels,
+                missing data, bright outdoor viewing, and interrupted capture.
+                Automated contrast checks alone are not an accessibility audit.
+              </p>
+            </aside>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">18 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-21"
+      aria-label="Page 19: Compose from roles, not one-off styling."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>19 / Designer &amp; AI handoff</span>
+      </header>
+      <div class="heading">
+        <h1>Compose from roles, not one-off styling.</h1>
+        <p class="deck">
+          The following contract should accompany any implementation brief or
+          AI-generated interface task.
+        </p>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div>
+            <h3>Starter token contract</h3>
+            <pre class="code-block">
+:root {
+  --qm-font-ui: "Source Sans 3", system-ui, sans-serif;
+  --qm-font-heading: "Manrope", system-ui, sans-serif;
+  --qm-canvas: #F5F6F2;
+  --qm-surface: #FFFFFF;
+  --qm-text: #172D3A;
+  --qm-text-muted: #52656E;
+  --qm-action: #17635B;
+  --qm-action-hover: #124F49;
+  --qm-action-pressed: #0D3D38;
+  --qm-selected: #E8F3EF;
+  --qm-divider: #D7E0DC;
+  --qm-control-border: #81908C;
+  --qm-focus: #315ECA;
+  --qm-radius-control: 8px;
+  --qm-radius-card: 12px;
+  --qm-target: 44px;
+  --qm-target-capture: 48px;
+  --qm-space-1: 4px;
+  --qm-space-2: 8px;
+  --qm-space-3: 12px;
+  --qm-space-4: 16px;
+  --qm-space-6: 24px;
+  --qm-space-8: 32px;
+}</pre>
+            <p class="small muted">
+              Semantic color pairs are specified on page 2. Use rem-based
+              typography and min-heights rather than fixed text containers.
+              These accepted tokens govern implementation. Mockup records are
+              illustrative, not live data.
+            </p>
+          </div>
+          <div>
+            <h3>Build reusable components</h3>
+            <p>
+              <b
+                >Shell · PageHeader · ActionButton · FormField · InfoDisclosure
+                · StatusBadge · DataTable · FilterBar · EmptyState · JobStatus ·
+                CaptureStep · ReviewPanel · ConfirmDialog</b
+              >
+            </p>
+            <p>
+              Each component defines its anatomy, accessible name, keyboard
+              behavior, loading/error/empty states, responsive behavior, and
+              permission handling—not only its default screenshot.
+            </p>
+            <div class="brief">
+              <div class="eyebrow">PASTE INTO A DESIGN BRIEF</div>
+              <p>
+                Follow Quartermaster Visual Style Guide v1.0. Use the named
+                type, color, spacing, and component roles. Make the everyday
+                action obvious. Keep labels persistent and plain. Add helper
+                text or an information disclosure for unfamiliar concepts.
+                Preserve tenant context, supported functionality, permissions,
+                privacy rules, and human review of AI output. Show realistic
+                empty, loading, error, and success states. Do not invent data,
+                APIs, metrics, offline support, or nonfunctional controls.
+                Deliver desktop and phone compositions plus an accessibility
+                check.
+              </p>
+            </div>
+            <p>
+              <b>Review order:</b> hierarchy → language → interaction →
+              responsive behavior → visual finish. A polished mockup does not
+              authorize a product-policy change.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">19 / 20</span>
+      </footer>
+    </section>
+    <section
+      class="page"
+      id="page-22"
+      aria-label="Page 20: One accepted standard. Applied consistently."
+    >
+      <header class="running">
+        <span class="running-brand">Quartermaster / Visual style guide</span
+        ><span>20 / Acceptance &amp; references</span>
+      </header>
+      <div class="heading">
+        <h1>One accepted standard. Applied consistently.</h1>
+        <p class="deck">
+          Use this checklist when implementing or changing Quartermaster.
+          Preserve the product’s functionality and privacy boundaries.
+        </p>
+      </div>
+      <div class="body">
+        <div class="cols">
+          <div>
+            <h3>Implementation acceptance checklist</h3>
+            <div class="review-checks">
+              <p>
+                <span>□</span>The overall tone is clean, businesslike, and
+                welcoming.
+              </p>
+              <p>
+                <span>□</span>Teal, warm neutrals, and the semantic colors feel
+                appropriate.
+              </p>
+              <p>
+                <span>□</span>The heading/body font pairing is readable and
+                distinctive enough.
+              </p>
+              <p>
+                <span>□</span>The register and detail view expose the right
+                information first.
+              </p>
+              <p>
+                <span>□</span>Labels and help explain financial and maintenance
+                concepts clearly.
+              </p>
+              <p>
+                <span>□</span>Phone capture is understandable without voice or
+                camera permission.
+              </p>
+              <p>
+                <span>□</span>Status, AI suggestions, saved data, and errors are
+                visibly distinct.
+              </p>
+              <p>
+                <span>□</span>Comfortable density is the right default for
+                ordinary users.
+              </p>
+            </div>
+            <aside class="note soft">
+              <strong>Implementation sequence</strong>
+              <p>
+                1. Tokens, typography, shell, and navigation.<br />2. Shared
+                fields, help, buttons, status, and tables.<br />3.
+                Asset/capture/report screens and state coverage.<br />4.
+                Keyboard, screen-reader, phone, and visual regression checks.
+              </p>
+            </aside>
+            <p class="small muted">
+              Accepted by Erick Brown on October 6, 2026. Brand mark treatment
+              is a simple evolution of the existing Q; it is not a finalized
+              logo identity or trademark assessment. Dark mode and a broader
+              marketing identity can be designed separately.
+            </p>
+          </div>
+          <div>
+            <h3>Source notes · checked Oct 6, 2026</h3>
+            <ol class="references">
+              <li>
+                <a
+                  href="https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html"
+                  >W3C · Contrast (Minimum), SC 1.4.3</a
+                ><span>Text contrast thresholds and measurement.</span>
+              </li>
+              <li>
+                <a
+                  href="https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html"
+                  >W3C · Non-text Contrast, SC 1.4.11</a
+                ><span>Essential control and graphical contrast.</span>
+              </li>
+              <li>
+                <a
+                  href="https://www.w3.org/WAI/WCAG22/Understanding/content-on-hover-or-focus.html"
+                  >W3C · Content on Hover or Focus, SC 1.4.13</a
+                ><span>Accessible supplemental content.</span>
+              </li>
+              <li>
+                <a
+                  href="https://www.w3.org/WAI/WCAG22/Understanding/reflow.html"
+                  >W3C · Reflow, SC 1.4.10</a
+                ><span>Zoom, narrow viewports, and table exceptions.</span>
+              </li>
+              <li>
+                <a href="https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/"
+                  >W3C APG · Disclosure pattern</a
+                ><span>Button semantics and expanded state.</span>
+              </li>
+              <li>
+                <a href="https://github.com/google/fonts/tree/main/ofl/manrope"
+                  >Manrope · Font files and SIL OFL license</a
+                ><span
+                  >Heading family; source files retained with this guide.</span
+                >
+              </li>
+              <li>
+                <a href="https://github.com/adobe-fonts/source-sans"
+                  >Adobe · Source Sans 3</a
+                ><span
+                  >Interface family; font files and license also distributed
+                  through Google Fonts.</span
+                >
+              </li>
+              <li>
+                <a
+                  href="https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html"
+                  >W3C · Target Size (Minimum), SC 2.5.8</a
+                ><span>AA minimum; Quartermaster adopts larger targets.</span>
+              </li>
+            </ol>
+            <p class="small muted">
+              Product context: Quartermaster’s current authenticated-workspace
+              design and accepted retention/online-only decisions. Contrast
+              values in this guide were computed locally. Accessibility
+              references are guidance, not a claim of conformance.
+            </p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>ACCEPTED DESIGN · v1.0 · OCTOBER 2026</span
+        ><a href="#page-3">Quartermaster · Clear by design</a
+        ><span class="folio">20 / 20</span>
+      </footer>
+    </section>
+  </body>
+</html>

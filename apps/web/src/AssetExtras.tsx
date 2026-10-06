@@ -1,3 +1,4 @@
+import { confirmAction } from './ConfirmDialog';
 import { useState } from 'react';
 import type { Asset, Membership, RecordKind } from '@quartermaster/contracts';
 import { RecordsPanel } from './RecordsPanel';
@@ -62,10 +63,11 @@ export function AssetExtras({
             subject to deletion replay.
           </p>
           <button
+            className="danger"
             disabled={mutation.busy}
-            onClick={() => {
+            onClick={async () => {
               if (
-                window.confirm(
+                await confirmAction(
                   `Permanently delete ${asset.name} and its live data?`,
                 )
               )
