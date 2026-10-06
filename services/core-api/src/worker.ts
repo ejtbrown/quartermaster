@@ -194,6 +194,24 @@ export class Worker {
           jobId: message.id,
           code,
           errorType: error instanceof Error ? error.name : 'Unknown',
+          // Schema diagnostics only: never log model text or user values.
+          schemaIssues:
+            error instanceof z.ZodError
+              ? error.issues.slice(0, 8).map((issue) => ({
+                  code: issue.code,
+                  field: [
+                    'fields',
+                    'components',
+                    'maintenance',
+                    'readings',
+                    'requestedPhoto',
+                    'reply',
+                    'readyForReview',
+                  ].includes(String(issue.path[0]))
+                    ? String(issue.path[0])
+                    : 'other',
+                }))
+              : undefined,
           sqlState:
             error instanceof Error
               ? error.message.match(/SQLState:\s*([A-Z0-9]{5})/)?.[1]
@@ -375,8 +393,9 @@ export class Worker {
       });
       const result = await this.platform.model(
         tenant,
-        'Help capture one asset, asking one concise next question, accepting skipped photos, noting access constraints, and proposing maintenance and readings from volunteered facts. Dates must use the given organization date/time zone; before year end means December 31 and you must state it. Never invent unknown facts. Return JSON with exactly: reply(string), fields(object with optional name,assetClass,location,manufacturer,model,serialNumber,notes), maintenance(array of {title,dueDate:YYYY-MM-DD or null,notes}), readings(array of {label,value:number,unit,notes}), requestedPhoto(one of nameplate,whole_unit,outdoor_coil,compressor,damage_detail,document,other or null), readyForReview(boolean). Use air_conditioner or appliance unless the current draft specifies another class. Preserve relevant prior proposals/notes. Do not ask anyone to open energized equipment, attach instruments, or perform unsafe work. When complete, ask for final human review, not an automatic save. UNTRUSTED CONTEXT:\n' +
-          'Include components: an array of {name,kind,accessConstraints,notes}, using it for constraints such as damaged cover screws. Do not place these only in transient conversation history. Context follows:\n' +
+        'Help capture one asset, asking one concise next question, accepting skipped photos, noting access constraints, and proposing maintenance and readings from volunteered facts. Dates must use the given organization date/time zone; before year end means December 31 and you must state it. Never invent unknown facts. Use air_conditioner or appliance unless the current draft specifies another class. Preserve relevant prior proposals/notes. Do not ask anyone to open energized equipment, attach instruments, or perform unsafe work. When complete, ask for final human review, not an automatic save. Return exactly one JSON object matching the following schema. Omit unknown optional fields; never use null unless the schema explicitly allows null. Use empty arrays when no components, maintenance or readings were volunteered. Use components to preserve access constraints such as damaged cover screws, not only transient conversation text. JSON SCHEMA:\n' +
+          JSON.stringify(z.toJSONSchema(CaptureProposal)) +
+          '\nUNTRUSTED CONTEXT:\n' +
           JSON.stringify(context),
       );
       const proposal = CaptureProposal.parse(parseModel(result.text));
@@ -385,7 +404,7 @@ export class Worker {
         model: result.model,
         inputTokens: result.inputTokens,
         outputTokens: result.outputTokens,
-        promptVersion: 'capture-v1',
+        promptVersion: 'capture-v2-schema',
       };
       await this.tx(
         tenant,

@@ -44,10 +44,28 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const signal = init.signal
     ? AbortSignal.any([init.signal, deadline])
     : deadline;
+  const headers = new Headers(init.headers);
+  if (!['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase())) {
+    // CloudFront OAC needs the exact payload hash for the private Lambda URL.
+    // All BFF payloads are JSON strings; direct S3 uploads use a separate path.
+    if (init.body != null && typeof init.body !== 'string')
+      throw new Error('API writes require a serialized JSON body');
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(init.body ?? ''),
+    );
+    headers.set(
+      'x-amz-content-sha256',
+      Array.from(new Uint8Array(digest), (n) =>
+        n.toString(16).padStart(2, '0'),
+      ).join(''),
+    );
+  }
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const response = await fetch(path, {
         ...init,
+        headers,
         credentials: 'same-origin',
         cache: 'no-store',
         signal,

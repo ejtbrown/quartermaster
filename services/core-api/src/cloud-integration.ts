@@ -64,6 +64,7 @@ export async function cloudIntegration(
     expected = 200,
   ): Promise<T> {
     const key = randomUUID();
+    const serialized = body === undefined ? undefined : JSON.stringify(body);
     for (let attempt = 0; ; attempt++) {
       const response = await fetch(origin + path, {
         method,
@@ -75,9 +76,16 @@ export async function cloudIntegration(
           'x-csrf-token': csrf,
           'content-type': 'application/json',
           'idempotency-key': key,
+          ...(!['GET', 'HEAD'].includes(method)
+            ? {
+                'x-amz-content-sha256': createHash('sha256')
+                  .update(serialized ?? '')
+                  .digest('hex'),
+              }
+            : {}),
           ...(version ? { 'if-match': `"${version}"` } : {}),
         },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        ...(serialized === undefined ? {} : { body: serialized }),
       });
       const result = (await response.json()) as T & { code?: string };
       if (
@@ -87,6 +95,19 @@ export async function cloudIntegration(
         await delay(5000);
         continue;
       }
+      if (response.status !== expected)
+        console.error(
+          JSON.stringify({
+            probeMethod: method,
+            probeRoute: path.split('/').at(-1),
+            status: response.status,
+            expected,
+            code:
+              typeof result.code === 'string' && /^[a-z_]+$/.test(result.code)
+                ? result.code
+                : undefined,
+          }),
+        );
       assert.equal(
         response.status,
         expected,
@@ -114,6 +135,10 @@ export async function cloudIntegration(
       await delay(3000);
       const item = await call<Job>('jobs/' + id);
       if (item.state === 'complete') return item;
+      if (item.state === 'failed')
+        console.error(
+          JSON.stringify({ probeJob: item.kind, code: item.errorCode }),
+        );
       assert.notEqual(
         item.state,
         'failed',
@@ -179,6 +204,7 @@ export async function cloudIntegration(
       session.memberships.map((v) => v.tenantId),
       [tenant],
     );
+    console.log('Live probe session and tenant membership passed.');
     await request(
       `/api/v1/tenants/${other}/assets`,
       'GET',
@@ -259,6 +285,9 @@ export async function cloudIntegration(
       422,
     );
     assert.equal(silence.code, 'no_speech_detected');
+    console.log(
+      'Transcribe accepted the audio stream and correctly rejected silence.',
+    );
     const turn = await call<{ item: Job }>(
       `conversations/${capture.id}/turns`,
       'POST',

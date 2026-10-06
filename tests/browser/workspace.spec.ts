@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { test, expect } from '@playwright/test';
 import { PGlite } from '@electric-sql/pglite';
 import { Auth, hash } from '../../services/core-api/src/auth';
@@ -155,6 +156,12 @@ test.beforeEach(async ({ page }) => {
     const request = route.request(),
       url = new URL(request.url()),
       headers = await request.allHeaders();
+    if (!['GET', 'HEAD'].includes(request.method()))
+      expect(headers['x-amz-content-sha256']).toBe(
+        createHash('sha256')
+          .update(request.postData() ?? '')
+          .digest('hex'),
+      );
     const create =
       url.pathname.endsWith('/assets') && request.method() === 'POST';
     if (create) mutationKeys.push(headers['idempotency-key']!);

@@ -720,6 +720,15 @@ describe('ordinary-tenant features, durable jobs and security boundaries', () =>
     expect(vi.mocked(platform.model).mock.calls[0]![1]).not.toContain(
       'Recorded observation',
     );
+    const prompt = vi.mocked(platform.model).mock.calls[0]![1];
+    const schema = JSON.parse(
+      prompt.split('JSON SCHEMA:\n')[1]!.split('\nUNTRUSTED CONTEXT:\n')[0]!,
+    );
+    expect(schema.additionalProperties).toBe(false);
+    expect(schema.properties.fields.additionalProperties).toBe(false);
+    expect(schema.properties.fields.properties.notes.type).toBe('string');
+    expect(schema.properties.components.maxItems).toBe(10);
+    expect(schema.required).toContain('readyForReview');
     expect(await call('assets')).toMatchObject({ items: [] });
     expect(await call('conversations/' + item.id)).toMatchObject({
       proposal: { fields: { name: 'Suggested AC' } },
