@@ -56,8 +56,23 @@ const allowedTypes = new Set([
   'aws_cognito_user_pool_client',
   'aws_cognito_user_pool_domain',
   'aws_secretsmanager_secret',
+  'aws_s3_bucket_cors_configuration',
+  'aws_s3_bucket_notification',
+  'aws_sqs_queue',
+  'aws_sqs_queue_policy',
+  'aws_scheduler_schedule_group',
+  'aws_lambda_event_source_mapping',
+  'aws_cloudwatch_metric_alarm',
+  'aws_cloudwatch_log_metric_filter',
+  'aws_kms_key',
+  'aws_kms_alias',
+  'aws_sns_topic_policy',
 ]);
 const taggable = new Set([
+  'aws_kms_key',
+  'aws_sqs_queue',
+  'aws_scheduler_schedule_group',
+  'aws_cloudwatch_metric_alarm',
   'aws_vpc',
   'aws_subnet',
   'aws_security_group',
@@ -142,6 +157,18 @@ export function inspectPlan(input: unknown): string[] {
           fail(`Missing or unexpected ${key} tag`);
     }
     switch (resource.type) {
+      case 'aws_kms_key':
+        if (
+          !resource.address.endsWith('aws_kms_key.operations') ||
+          value.deletion_window_in_days !== 30 ||
+          value.enable_key_rotation !== true
+        )
+          fail('Only the protected rotating operational-alert key is approved');
+        break;
+      case 'aws_kms_alias':
+        if (value.name !== 'alias/quartermaster-dev-operations')
+          fail('Only the project alert-key alias is approved');
+        break;
       case 'aws_rds_cluster': {
         const scaling = blocks(value.serverlessv2_scaling_configuration)[0];
         if (
@@ -227,17 +254,34 @@ export function inspectPlan(input: unknown): string[] {
             (rule) =>
               rule.status !== 'Disabled' &&
               !(
-                resource.address ===
+                (resource.address.endsWith(
+                  'aws_s3_bucket_lifecycle_configuration.media',
+                ) &&
+                  ['originals/', 'quarantine/', 'exports/'].includes(
+                    String(blocks(rule.filter)[0]?.prefix),
+                  ) &&
+                  blocks(rule.expiration)[0]?.days ===
+                    (blocks(rule.filter)[0]?.prefix === 'quarantine/'
+                      ? 1
+                      : 15) &&
+                  blocks(rule.noncurrent_version_expiration)[0]
+                    ?.noncurrent_days ===
+                    (blocks(rule.filter)[0]?.prefix === 'quarantine/'
+                      ? 1
+                      : 15)) ||
+                (resource.address ===
                   'aws_s3_bucket_lifecycle_configuration.build_artifacts' &&
-                rule.id === 'public-build-artifacts-30-days' &&
-                blocks(rule.filter)[0]?.prefix === 'quartermaster-dev/' &&
-                blocks(rule.expiration)[0]?.days === 30 &&
-                blocks(rule.noncurrent_version_expiration)[0]
-                  ?.noncurrent_days === 30
+                  rule.id === 'public-build-artifacts-30-days' &&
+                  blocks(rule.filter)[0]?.prefix === 'quartermaster-dev/' &&
+                  blocks(rule.expiration)[0]?.days === 30 &&
+                  blocks(rule.noncurrent_version_expiration)[0]
+                    ?.noncurrent_days === 30)
               ),
           )
         )
-          fail('Destructive content lifecycle awaits policy confirmation');
+          fail(
+            'Only approved originals, quarantine, export and build-artifact expiry is allowed; never resized-photo expiry',
+          );
         break;
       case 'aws_lambda_function':
         if (
@@ -245,11 +289,42 @@ export function inspectPlan(input: unknown): string[] {
           value.reserved_concurrent_executions < 1 ||
           value.reserved_concurrent_executions > 5 ||
           Number(value.timeout) >
-            (value.function_name === 'quartermaster-dev-api' ? 30 : 10) ||
+            (value.function_name === 'quartermaster-dev-api'
+              ? 30
+              : value.function_name === 'quartermaster-dev-worker'
+                ? 180
+                : 10) ||
           blocks(value.vpc_config).length
         )
           fail(
             'Delivery Lambdas require bounded concurrency/timeouts and no VPC',
+          );
+        if (
+          value.function_name === 'quartermaster-dev-worker' &&
+          (value.reserved_concurrent_executions !== 2 ||
+            value.memory_size !== 1024)
+        )
+          fail('Worker requires reserved concurrency 2 and memory 1024 MB');
+        break;
+      case 'aws_sqs_queue':
+        if (
+          !['quartermaster-dev-jobs', 'quartermaster-dev-jobs-dlq'].includes(
+            String(value.name),
+          ) ||
+          value.sqs_managed_sse_enabled !== true ||
+          Number(value.message_retention_seconds) > 1209600
+        )
+          fail('Only encrypted, bounded development job queues are approved');
+        break;
+      case 'aws_lambda_event_source_mapping':
+        if (
+          value.batch_size !== 1 ||
+          blocks(value.scaling_config)[0]?.maximum_concurrency !== 2 ||
+          JSON.stringify(value.function_response_types) !==
+            '["ReportBatchItemFailures"]'
+        )
+          fail(
+            'Worker delivery must preserve bounded concurrency and partial-batch retries',
           );
         break;
       case 'aws_cognito_user_pool':
@@ -284,7 +359,10 @@ export function inspectPlan(input: unknown): string[] {
         break;
       case 'aws_secretsmanager_secret':
         if (
-          value.name !== 'quartermaster-dev/database-runtime' ||
+          ![
+            'quartermaster-dev/database-runtime',
+            'quartermaster-dev/database-worker',
+          ].includes(String(value.name)) ||
           value.recovery_window_in_days !== 30
         )
           fail(

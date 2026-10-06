@@ -42,4 +42,4 @@ module "foundation" {
 output "database_arn" { value = module.foundation.database_arn }
 output "media_bucket" { value = module.foundation.media_bucket }
 output "development_domain" { value = "qm.ejtbrown.com" }
-output "deployment_scope" { value = "Data/governance foundation only. Edge, identity, API integration, DNS/email, cross-region recovery and CI/CD remain pending." }
+output "deployment_scope" { value = "Ohio development data/governance and operational retention foundation; application delivery is managed in its separate Terraform root. Production and cross-region recovery remain separate." }

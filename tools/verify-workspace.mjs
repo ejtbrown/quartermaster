@@ -24,9 +24,9 @@ assert.equal(health.status, 200);
 uncached(health);
 assert.deepEqual(await health.json(), {
   service: 'quartermaster',
-  status: 'synthetic-workspace',
+  status: 'workspace',
   assetApiReady: true,
-  syntheticOnly: true,
+  syntheticOnly: false,
   release: sha,
 });
 for (const headers of [
@@ -112,8 +112,11 @@ const index = await get('/');
 assert.equal(index.status, 200);
 assert.ok(index.headers.get('content-security-policy'));
 assert.ok(index.headers.get('strict-transport-security'));
-assert.match(index.headers.get('permissions-policy') ?? '', /camera=\(\)/);
-assert.match(index.headers.get('permissions-policy') ?? '', /microphone=\(\)/);
+assert.match(index.headers.get('permissions-policy') ?? '', /camera=\(self\)/);
+assert.match(
+  index.headers.get('permissions-policy') ?? '',
+  /microphone=\(self\)/,
+);
 const html = await index.text();
 assert.equal(html, await readFile('apps/web/dist/index.html', 'utf8'));
 for (const [, path] of html.matchAll(/(?:src|href)="(\/assets\/[^\"]+)"/g)) {
@@ -157,10 +160,12 @@ try {
       path: `.local/live-workspace-${width}.png`,
       fullPage: true,
     });
-    await page
-      .getByRole('button', { name: 'Explore the sample register' })
-      .click();
-    await page.getByRole('heading', { name: 'Your asset estate' }).waitFor();
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Explore the sample register' })
+        .count(),
+      0,
+    );
     assert.deepEqual(errors, []);
     await page.close();
   }
@@ -168,5 +173,5 @@ try {
   await browser.close();
 }
 console.log(
-  'Live synthetic workspace verified: exact release/static hashes, anonymous denial, login PKCE/cookie binding/single-use state, provider form, DynamoDB access, security headers, private origins and desktop/mobile-viewport rendering. No accounts created; successful user/MFA enrollment remains untested.',
+  'Live operational entry verified: exact release/static hashes, anonymous denial, login PKCE/cookie binding/single-use state, provider form, DynamoDB access, security headers, private origins and desktop/mobile-viewport rendering. This check creates no accounts and does not claim successful user/MFA enrollment.',
 );

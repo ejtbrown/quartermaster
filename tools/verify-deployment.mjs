@@ -176,11 +176,17 @@ for (const kind of ['tfstate', 'media']) {
       bucket,
     );
     check(
-      'no active media expiry; original-only 15-day intent',
-      lifecycle.Rules.length === 1 &&
-        lifecycle.Rules[0].Status === 'Disabled' &&
-        lifecycle.Rules[0].Filter.Prefix === 'originals/' &&
-        lifecycle.Rules[0].Expiration.Days === 15,
+      'approved original/quarantine/export expiry only; resized media retained',
+      lifecycle.Rules.length === 3 &&
+        lifecycle.Rules.every(
+          (rule) =>
+            rule.Status === 'Enabled' &&
+            ['originals/', 'quarantine/', 'exports/'].includes(
+              rule.Filter?.Prefix,
+            ) &&
+            rule.Expiration?.Days ===
+              (rule.Filter.Prefix === 'quarantine/' ? 1 : 15),
+        ),
     );
   }
 }

@@ -18,6 +18,8 @@ const commit = required('QM_RELEASE_SHA');
 const workspaceMode = process.env.QM_EXPECT_WORKSPACE ?? 'false';
 assert.ok(['true', 'false'].includes(workspaceMode));
 const expectWorkspace = workspaceMode === 'true';
+const workerName = expectWorkspace ? required('QM_WORKER_FUNCTION') : null;
+if (workerName) assert.equal(workerName, 'quartermaster-dev-worker');
 assert.match(account, /^\d{12}$/);
 assert.equal(bucket, `quartermaster-dev-web-${account}-us-east-2`);
 assert.equal(functionName, 'quartermaster-dev-api');
@@ -40,7 +42,11 @@ const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
 assert.equal(manifest.version, 1);
 assert.equal(manifest.commit, commit);
 assert.match(commit, /^[0-9a-f]{40}$/);
-const artifacts = ['api.zip', ...filesUnder('web', 'web/')].sort();
+const artifacts = [
+  'api.zip',
+  'worker.zip',
+  ...filesUnder('web', 'web/'),
+].sort();
 assert.deepEqual(Object.keys(manifest.files).sort(), artifacts);
 for (const path of artifacts) {
   assert.ok(validReleasePath(path));
@@ -73,6 +79,17 @@ try {
   if (!String(error.stderr).includes('(404)')) throw error;
 }
 let changedAlias = false;
+const priorWorker = workerName
+  ? aws([
+      'lambda',
+      'get-alias',
+      '--function-name',
+      workerName,
+      '--name',
+      'live',
+    ])
+  : null;
+let changedWorker = false;
 let changedIndex = false;
 function invalidate() {
   const result = aws([
@@ -98,6 +115,54 @@ function invalidate() {
   );
 }
 try {
+  // Publish/smoke both immutable versions before moving either live pointer.
+  let workerVersion;
+  if (workerName) {
+    workerVersion = aws([
+      'lambda',
+      'update-function-code',
+      '--function-name',
+      workerName,
+      '--zip-file',
+      'fileb://worker.zip',
+      '--publish',
+    ]).Version;
+    assert.match(workerVersion, /^\d+$/);
+    execFileSync(
+      'aws',
+      [
+        'lambda',
+        'wait',
+        'function-updated-v2',
+        '--function-name',
+        workerName,
+        '--region',
+        'us-east-2',
+      ],
+      { stdio: 'inherit' },
+    );
+    const workerResult = join(
+      mkdtempSync(join(tmpdir(), 'qm-worker-release-')),
+      'health.json',
+    );
+    const invoked = aws([
+      'lambda',
+      'invoke',
+      '--function-name',
+      workerName,
+      '--qualifier',
+      workerVersion,
+      '--cli-binary-format',
+      'raw-in-base64-out',
+      '--payload',
+      JSON.stringify({ health: true }),
+      workerResult,
+    ]);
+    assert.equal(invoked.FunctionError, undefined);
+    const health = JSON.parse(readFileSync(workerResult, 'utf8'));
+    assert.equal(health.ready, true);
+    assert.equal(health.release, commit);
+  }
   const version = aws([
     'lambda',
     'update-function-code',
@@ -146,7 +211,7 @@ try {
   assert.equal(response.statusCode, 200);
   assert.equal(JSON.parse(response.body).release, commit);
   assert.equal(JSON.parse(response.body).assetApiReady, expectWorkspace);
-  assert.equal(JSON.parse(response.body).syntheticOnly, true);
+  assert.equal(JSON.parse(response.body).syntheticOnly, false);
   // Content-addressed assets first; retain old assets for rollback and open tabs.
   execFileSync(
     'aws',
@@ -166,6 +231,21 @@ try {
     ],
     { stdio: 'inherit' },
   );
+  if (workerName) {
+    aws([
+      'lambda',
+      'update-alias',
+      '--function-name',
+      workerName,
+      '--name',
+      'live',
+      '--function-version',
+      workerVersion,
+      '--revision-id',
+      priorWorker.RevisionId,
+    ]);
+    changedWorker = true;
+  }
   aws([
     'lambda',
     'update-alias',
@@ -206,7 +286,7 @@ try {
   const health = await healthResponse.json();
   assert.equal(health.release, commit);
   assert.equal(health.assetApiReady, expectWorkspace);
-  assert.equal(health.syntheticOnly, true);
+  assert.equal(health.syntheticOnly, false);
   const sessionResponse = await fetch(publicUrl + '/api/auth/session', {
     signal: AbortSignal.timeout(60000),
   });
@@ -252,6 +332,17 @@ try {
       'live',
       '--function-version',
       priorAlias.FunctionVersion,
+    ]);
+  if (changedWorker)
+    aws([
+      'lambda',
+      'update-alias',
+      '--function-name',
+      workerName,
+      '--name',
+      'live',
+      '--function-version',
+      priorWorker.FunctionVersion,
     ]);
   if (changedIndex && priorIndex?.VersionId) {
     aws([

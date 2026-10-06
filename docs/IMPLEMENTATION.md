@@ -1,6 +1,18 @@
 # Development implementation status
 
-## Authentication and manual operations
+## October 6 operational build and rollout
+
+The owner authorized the real operational structure, an invitation and empty Quartermaster workspace, and inaccessible backup copies until expiry with deletion replay. No seeded demo register remains. The [operational scope/runbook](AUTHENTICATED-WORKSPACE.md) is authoritative over the historical sections below.
+
+Implemented: private images and nameplate proposals; foreground voice transcription and review-gated assisted capture; asset lifecycle, locations/types/components; maintenance plans/logs; insurance valuations/policies; incident snapshots/assessments; accounting estimates; rule preview/activation; saved searches; bounded reports and checksummed photo exports; membership/settings; version-aware deletion; independent restore ledger and isolated replay tool. The queue worker and one-time schedules add no continuously running application compute.
+
+Local verification: 144 TypeScript/domain/PostgreSQL/policy tests, two Python operations tests, nine desktop/phone-viewport Chromium checks, eleven Terraform mocks, bundled API/operator/native decoder smoke checks, formatting/types and repository checks passed. The dependency audit is clean after pinning the patched source-map-js 1.2.2 build dependency. Browser fixtures use actual API/PostgreSQL logic but injected external services. Live application rollout is in progress; do not infer successful cloud AI, MFA or snapshot restore from local checks.
+
+Applied infrastructure: foundation 6 additions/2 updates and delivery 22 additions/4 updates, with no deletes or replacements. The SNS topic policy initially rejected a wildcard action; the one-resource corrective plan succeeded with explicit supported actions. Private upload CORS/retention, on-demand deletion ledger, worker/queue/scheduler/IAM, worker credential and encrypted failure alerts are live. Migration 0004 is applied and immutable. Actual Aurora runtime/worker role checks and two-tenant integration passed; temporary fixture rows were removed. The ARM64 worker's native image-decoder health invocation passed. A labeled CloudWatch test successfully published through encrypted SNS, then the alarm was restored to normal evaluation; this proves publisher acceptance, not human mailbox receipt. The dev-branch application release and owner invitation are the next rollout steps.
+
+Remaining acceptance: human login/TOTP, physical iPhone/Android camera/microphone interruption tests, timed database/media restore, broader model evaluation, church acceptance and a separate production account. Compliance holds and future barcode/natural-language-query/general-ledger integrations remain future scope, not nonfunctional controls in the UI.
+
+## Historical authentication and manual operations — September 25
 
 The [authenticated workspace increment](AUTHENTICATED-WORKSPACE.md) adds Cognito/BFF session plumbing, forced membership/capability RLS, a non-owner Data API adapter and operator migration/credential tools, persistent asset editing/search, maintenance/readings, private server drafts, audit and retry/version safeguards. The responsive UI is tested against the actual API and PostgreSQL code with injected identity/session storage.
 

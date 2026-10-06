@@ -30,7 +30,7 @@ resource "aws_lambda_function" "api" {
   reserved_concurrent_executions = 5
   publish                        = true
   environment {
-    variables = var.enable_workspace ? {
+    variables = var.enable_workspace ? merge(local.operational_environment, {
       QM_WORKSPACE_ENABLED = "true"
       QM_ORIGIN            = "https://${local.domain}"
       QM_COGNITO_DOMAIN    = "https://${aws_cognito_user_pool_domain.workspace[0].domain}.auth.${local.region}.amazoncognito.com"
@@ -39,7 +39,7 @@ resource "aws_lambda_function" "api" {
       QM_SESSIONS_TABLE    = "${local.name}-sessions"
       QM_DATABASE_ARN      = "arn:aws:rds:${local.region}:${var.expected_account_id}:cluster:${local.name}"
       QM_APP_SECRET_ARN    = aws_secretsmanager_secret.runtime[0].arn
-    } : { QM_WORKSPACE_ENABLED = "false" }
+    }) : { QM_WORKSPACE_ENABLED = "false" }
   }
   depends_on = [aws_iam_role_policy.api]
   lifecycle {

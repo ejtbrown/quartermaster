@@ -17,6 +17,7 @@ assert.equal(
 );
 cpSync('apps/web/dist', 'release/web', { recursive: true });
 cpSync('services/core-api/dist/api.zip', 'release/api.zip');
+cpSync('services/core-api/dist/worker.zip', 'release/worker.zip');
 const files = Object.fromEntries(
   filesUnder('release').map((path) => {
     assert.ok(validReleasePath(path));

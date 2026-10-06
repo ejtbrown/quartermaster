@@ -131,6 +131,115 @@ button:disabled {
 .error {
   color: #8a2b26;
 }
+.panel {
+  background: white;
+  border: 1px solid #d5dfd1;
+  border-radius: 8px;
+  padding: 24px;
+  margin: 20px 0;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.panel p {
+  line-height: 1.6;
+}
+.panel h1 {
+  font-size: 26px;
+}
+.estate-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0;
+}
+.estate-nav [aria-current='page'] {
+  background: #214d40;
+  color: white;
+}
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 16px;
+}
+.photo-card {
+  border: 1px solid #d5dfd1;
+  border-radius: 6px;
+  padding: 16px;
+}
+.photo-card img {
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+}
+.record-list > article {
+  border-bottom: 1px solid #d5dfd1;
+  padding: 16px 0;
+}
+.record-list dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+.operational input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+}
+.operational label:has(input[type='checkbox']) {
+  display: flex;
+  align-items: center;
+  margin: 10px 0;
+}
+.operational pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 420px;
+  overflow: auto;
+}
+.operational details {
+  padding: 14px 0;
+}
+.operational summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.table-scroll {
+  overflow: auto;
+  max-width: 100%;
+}
+.table-scroll table {
+  min-width: 640px;
+}
+.transcript {
+  border-left: 3px solid #8da395;
+  padding: 0 16px;
+  max-height: 400px;
+  overflow: auto;
+}
+@media print {
+  .sidebar,
+  .estate-nav,
+  button,
+  form,
+  .actions {
+    display: none !important;
+  }
+  .app-layout {
+    display: block;
+  }
+  main,
+  .panel {
+    padding: 0;
+    border: 0;
+  }
+  .table-scroll {
+    overflow: visible;
+  }
+  .table-scroll table {
+    min-width: 0;
+    font-size: 9px;
+  }
+}
 @media (max-width: 600px) {
   .form-grid {
     grid-template-columns: minmax(0, 1fr);

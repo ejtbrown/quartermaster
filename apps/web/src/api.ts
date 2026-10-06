@@ -18,7 +18,19 @@ export function messageFor(error: unknown): string {
       capability_required: 'Your membership does not allow this action.',
       membership_required: 'You no longer have access to this workspace.',
       invalid_fields: 'Please check the field values and required fields.',
-      pilot_not_enabled: 'Real-data workspaces are not enabled yet.',
+      recent_sign_in_required:
+        'For this action, verify your sign-in using the sidebar link, then retry.',
+      last_administrator: 'Keep at least one active workspace administrator.',
+      daily_usage_limit:
+        'The daily development allowance has been reached. Try again tomorrow or continue with manual entry.',
+      capture_context_limit:
+        'This capture has more context than the bounded AI request allows. Save the reviewed information manually, or start a shorter capture.',
+      upload_mismatch:
+        'The stored image does not match the upload you authorized. Please retry with the original file.',
+      preview_changed:
+        'The rule or matching assets changed. Preview again before approving.',
+      operation_in_progress:
+        'Another save is in progress. Wait a moment and retry.',
       idempotency_conflict:
         'This save key was already used for different data. Reload the record before continuing.',
     };

@@ -1,14 +1,14 @@
 # Quartermaster rollout and recovery runbook
 
-Status: foundation and Step 1 synthetic web/health-API delivery are deployed. September 25 exact-commit CodePipeline release and independent live checks passed; see [deployment evidence](docs/DEPLOYMENT-2026-09-25.md). Standard CloudFront/WAF and tiered backups remain selected. Later full-product procedures remain planned; do not repeat completed bootstrap/cleanup plans.
+Status: the October operational increment extends the existing development deployment. Use the current [operational commands and recovery gates](docs/AUTHENTICATED-WORKSPACE.md) and [rollout evidence](docs/IMPLEMENTATION.md); the September procedures below are historical and must not be rerun against the live stack. Standard CloudFront/WAF and tiered backups remain selected.
 
-Date: 2026-09-25 (living runbook; historical procedures are labeled)
+Date: 2026-10-06 (living runbook; historical procedures are labeled)
 
 Client scope: [decision 0007](docs/decisions/0007-online-only-mobile-web.md) accepts one online-only mobile/desktop web client. Native builds/signing, store distribution, the SSH coordinator, offline queues and background synchronization are not v1 release requirements. Verify foreground interruption/retry and acknowledgment-based save status instead. This documentation update performs no cloud deployment.
 
-Deployment status: data/governance validated; website and health API live through CodeBuild/CodePipeline, with WAF and private origins. Identity, online mobile asset capture, AI and regional recovery remain pending.
+The operational increment adds private capture, AI proposals, an on-demand queue worker and deletion replay. Actual deployment status is recorded in IMPLEMENTATION; a timed regional database/media restore and human device/MFA acceptance are separate gates.
 
-Consult `docs/IMPLEMENTATION.md` for verified commands and the exact deployed subset. The dev domain is `qm.ejtbrown.com`; budget is $100/month. Originals/transcripts expire after 15 days, audits after one year, recent snapshots after seven days and weekly snapshots after 90 days. Deletion metadata follows the backup horizon, currently 90 days after deletion; compliance holds are deferred. Resized photos persist until photo/asset/tenant deletion. The alert recipient is supplied privately. Backup-content purge semantics and physical purge workers remain unresolved/unimplemented; do not enable destructive content lifecycle rules yet.
+The dev domain is `qm.ejtbrown.com`; budget is $100/month. Originals/transcripts expire after 15 days, audits after one year, recent snapshots after seven days and weekly snapshots after 90 days. Deletion metadata follows the backup horizon; compliance holds remain deferred. Resized photos persist until photo/asset/tenant deletion. Inaccessible backup copies may remain until expiry; the independent ledger MUST be replayed against isolated restores before access. The operational worker purges all live photo versions and cached exports. Do not apply lifecycle expiry to resized photos.
 
 ## Current development hosting and CI/CD milestone
 
@@ -445,7 +445,7 @@ Use the pipeline’s supported rollback job. Do not rebuild the “same” versi
 
 ## 10. Disaster recovery procedure
 
-The primary region is Ohio, with Oregon the proposed backup target and N. Virginia an approved alternative. Restore usable service within the accepted 24-hour RTO (Q-031). Prefer a completed recovery point within 24 hours; up to seven days of lost server-acknowledged data is tolerated if shorter protection is disproportionately costly. Backup retention is three months (90-day initial convention). Q-014 still needs backup-purge and retained-metadata details. Resized photos require recovery copies after originals expire. Before serving a restore, replay deletions and expiry from an independent current ledger so deleted/expired content cannot reappear. This procedure must be exercised and timed before production recovery readiness is claimed.
+The primary region is Ohio, with Oregon the proposed backup target and N. Virginia an approved alternative. Restore usable service within the accepted 24-hour RTO (Q-031). Prefer a completed recovery point within 24 hours; up to seven days of loss is tolerated if shorter protection is disproportionately costly. Backup copies and deletion markers follow the 90-day horizon; retained backup content is inaccessible until expiry, under the accepted Q-014 clarification. Resized photos need recoverable copies after originals expire. Before serving a restore, use `restore-admin.mjs` against isolated targets, replay the independent current ledger and expiry, verify media references and freeze/replay again before cutover. This must be exercised and timed before production recovery readiness is claimed; unit replay is not an AWS restore drill.
 
 1. Declare the incident, incident commander, affected region/services, and recovery point objective. Record the service interruption start and incident detection/declaration times; include detection and operator response in the elapsed recovery measurement against 24 hours, not just database restore time.
 2. Freeze normal deployment and, when necessary, writes; preserve CloudTrail/application/queue evidence.

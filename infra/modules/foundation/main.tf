@@ -146,20 +146,66 @@ resource "aws_s3_bucket_policy" "media" {
   })
 }
 
-# Intentional safety gate: metadata/access-deadline policy is testable now;
-# physical expiry must wait for version-aware purge workers and backup deletion
-# semantics. Resized photos live under resized/, without age-based expiration;
-# manual photo, asset, or tenant deletion must purge every version of those too.
+# Lifecycle is a backstop to exact-deadline, version-aware worker purges.
+# Resized photos intentionally have no age-based expiration.
 resource "aws_s3_bucket_lifecycle_configuration" "media" {
   bucket = aws_s3_bucket.media.id
   rule {
-    id     = "originals-15-days-pending-policy-confirmation"
-    status = "Disabled"
+    id     = "originals-15-days"
+    status = "Enabled"
     filter { prefix = "originals/" }
     expiration { days = 15 }
     noncurrent_version_expiration { noncurrent_days = 15 }
   }
+  rule {
+    id     = "quarantine-one-day"
+    status = "Enabled"
+    filter { prefix = "quarantine/" }
+    expiration { days = 1 }
+    noncurrent_version_expiration { noncurrent_days = 1 }
+    abort_incomplete_multipart_upload { days_after_initiation = 1 }
+  }
+  rule {
+    id     = "exports-15-days"
+    status = "Enabled"
+    filter { prefix = "exports/" }
+    expiration { days = 15 }
+    noncurrent_version_expiration { noncurrent_days = 15 }
+  }
   depends_on = [aws_s3_bucket_versioning.media]
+}
+resource "aws_s3_bucket_cors_configuration" "media" {
+  bucket = aws_s3_bucket.media.id
+  cors_rule {
+    allowed_origins = ["https://qm.ejtbrown.com"]
+    allowed_methods = ["POST", "GET", "HEAD"]
+    allowed_headers = ["content-type", "x-amz-checksum-sha256"]
+    expose_headers  = ["ETag", "x-amz-version-id"]
+    max_age_seconds = 300
+  }
+}
+resource "aws_dynamodb_table" "deletions" {
+  name                        = "${local.name}-deletions"
+  billing_mode                = "PAY_PER_REQUEST"
+  hash_key                    = "pk"
+  range_key                   = "sk"
+  deletion_protection_enabled = true
+  attribute {
+    name = "pk"
+    type = "S"
+  }
+  attribute {
+    name = "sk"
+    type = "S"
+  }
+  ttl {
+    attribute_name = "expires_at"
+    enabled        = true
+  }
+  point_in_time_recovery { enabled = true }
+  server_side_encryption { enabled = true }
+  tags = local.tags
+  lifecycle { prevent_destroy = true }
 }
 
 resource "aws_dynamodb_table" "sessions" {
@@ -186,7 +232,7 @@ resource "aws_dynamodb_table" "sessions" {
 
 resource "aws_sns_topic" "operations" {
   name              = "${local.name}-operations"
-  kms_master_key_id = "alias/aws/sns"
+  kms_master_key_id = aws_kms_key.operations.arn
   tags              = local.tags
 }
 

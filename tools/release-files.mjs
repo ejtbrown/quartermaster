@@ -21,7 +21,7 @@ export function digest(path) {
 export function validReleasePath(path) {
   return (
     typeof path === 'string' &&
-    /^(api\.zip|web\/[A-Za-z0-9_./-]+)$/.test(path) &&
+    /^(api\.zip|worker\.zip|web\/[A-Za-z0-9_./-]+)$/.test(path) &&
     !path
       .split('/')
       .some((part) => part === '.' || part === '..' || part === '')

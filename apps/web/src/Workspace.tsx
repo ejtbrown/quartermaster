@@ -12,11 +12,18 @@ import type {
   SessionInfo,
 } from '@quartermaster/contracts';
 import { api, ApiError, messageFor } from './api';
+import { EstateTools } from './EstateTools';
+import { AssetExtras } from './AssetExtras';
+import { PhotoGallery } from './PhotoGallery';
+import { AssetDetailsEditor, AssetClassSelect } from './AssetDetailsEditor';
+import { RecordSelect } from './estate-ui';
 
 const labels = {
   in_service: 'In service',
   needs_attention: 'Needs attention',
   out_of_service: 'Out of service',
+  retired: 'Retired',
+  disposed: 'Disposed',
 };
 const empty: AssetInput = {
   name: '',
@@ -39,6 +46,7 @@ function initialInput(asset: Asset | null, draft: Draft | null): AssetInput {
     model: source?.model ?? null,
     serialNumber: source?.serialNumber ?? null,
     notes: source?.notes ?? '',
+    details: source?.details ?? {},
   };
 }
 type Page<T> = { items: T[]; nextCursor: string | null };
@@ -51,7 +59,7 @@ type Save = (
 
 // Keys survive a failed/uncertain save only in this mounted component. There is
 // deliberately no localStorage, IndexedDB, offline queue or background retry.
-function useSave(base: string, csrf: string, after: () => void) {
+export function useSave(base: string, csrf: string, after: () => void) {
   const key = useRef<{ fingerprint: string; id: string } | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -101,7 +109,7 @@ function useSave(base: string, csrf: string, after: () => void) {
   };
   return { save, busy, error, success };
 }
-function Feedback({
+export function Feedback({
   busy,
   error,
   success,
@@ -178,7 +186,7 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
         <a className="brand" href="#main">
           <span className="brand-mark">Q</span> Quartermaster
         </a>
-        <p>Development workspace</p>
+        <p>Your estate workspace</p>
         <label>
           Organization
           <select
@@ -200,7 +208,11 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
         </label>
         <p>Online only. Save before leaving this tab.</p>
         <button onClick={() => void refreshSession()}>Refresh session</button>
-        <a href="/api/auth/login" target="_blank" rel="noopener noreferrer">
+        <a
+          href="/api/auth/login?reauth=1"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Sign in again in a new tab
         </a>
         <button onClick={() => void logout()}>Sign out</button>
@@ -210,10 +222,6 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
         </p>
       </aside>
       <main id="main">
-        <div className="notice" role="note">
-          Synthetic records only. No real church data yet. Photo/voice capture
-          and deletion remain disabled.
-        </div>
         {!online && (
           <p role="alert" className="error">
             You are offline. Nothing will be queued or saved until you reconnect
@@ -222,11 +230,14 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
         )}
         {error && <p role="alert">{error}</p>}
         {membership ? (
-          <Register
+          <EstateTools
             key={`${session.actorId}:${tenantId}`}
             membership={membership}
             csrf={session.csrfToken!}
-          />
+            actorId={session.actorId!}
+          >
+            <Register membership={membership} csrf={session.csrfToken!} />
+          </EstateTools>
         ) : (
           <>
             <h1>No workspace access</h1>
@@ -253,7 +264,15 @@ function Register({
     [summary, setSummary] = useState<EstateSummary>();
   const [query, setQuery] = useState(''),
     [filter, setFilter] = useState(''),
-    [search, setSearch] = useState({ q: '', status: '' });
+    [classFilter, setClassFilter] = useState(''),
+    [locationFilter, setLocationFilter] = useState(''),
+    [view, setView] = useState(''),
+    [search, setSearch] = useState({
+      q: '',
+      status: '',
+      assetClass: '',
+      locationId: '',
+    });
   const [selected, setSelected] = useState<Asset | null>(null),
     [creating, setCreating] = useState(false),
     [draft, setDraft] = useState<Draft | null>(null);
@@ -400,8 +419,18 @@ function Register({
             asset={selected}
             draft={draft}
             readOnly={!canWrite}
+            canFinance={membership.capabilities.includes('finance:write')}
             after={close}
           />
+          {selected && (
+            <PhotoGallery
+              base={base}
+              csrf={csrf}
+              assetId={selected.id}
+              canWrite={canWrite}
+              canDelete={membership.capabilities.includes('assets:delete')}
+            />
+          )}
           {selected && (
             <Observations
               key={selected.id}
@@ -412,6 +441,16 @@ function Register({
               after={changed}
             />
           )}
+          {selected && (
+            <AssetExtras
+              key={selected.id}
+              base={base}
+              csrf={csrf}
+              asset={selected}
+              membership={membership}
+              after={close}
+            />
+          )}
         </section>
       )}
       <section className="estate-panel" aria-label="Asset register">
@@ -419,7 +458,12 @@ function Register({
           className="register-heading"
           onSubmit={(e) => {
             e.preventDefault();
-            setSearch({ q: query, status: filter });
+            setSearch({
+              q: query,
+              status: filter,
+              assetClass: classFilter,
+              locationId: locationFilter,
+            });
           }}
         >
           <label className="search">
@@ -446,6 +490,52 @@ function Register({
           <button type="submit" disabled={busy}>
             Search
           </button>
+          <label>
+            Asset class filter
+            <input
+              value={classFilter}
+              placeholder="air_conditioner, appliance…"
+              onChange={(e) => setClassFilter(e.target.value)}
+            />
+          </label>
+          <RecordSelect
+            base={base}
+            kind="locations"
+            label="Location filter"
+            value={locationFilter}
+            onChange={setLocationFilter}
+          />
+          <RecordSelect
+            base={base}
+            kind="views"
+            label="Saved search"
+            value={view}
+            onChange={(id) => {
+              setView(id);
+              if (id)
+                void api<{
+                  content: {
+                    query: string;
+                    status: string;
+                    assetClass: string;
+                    locationId: string | null;
+                  };
+                }>(base + 'records/views/' + id)
+                  .then(({ content: v }) => {
+                    setQuery(v.query);
+                    setFilter(v.status);
+                    setClassFilter(v.assetClass);
+                    setLocationFilter(v.locationId ?? '');
+                    setSearch({
+                      q: v.query,
+                      status: v.status,
+                      assetClass: v.assetClass,
+                      locationId: v.locationId ?? '',
+                    });
+                  })
+                  .catch((e) => setError(messageFor(e)));
+            }}
+          />
         </form>
         {error && (
           <p role="alert" className="empty error">
@@ -598,6 +688,7 @@ function AssetEditor({
   asset,
   draft,
   readOnly,
+  canFinance,
   after,
 }: {
   base: string;
@@ -605,6 +696,7 @@ function AssetEditor({
   asset: Asset | null;
   draft: Draft | null;
   readOnly: boolean;
+  canFinance: boolean;
   after: () => void;
 }) {
   const [input, setInput] = useState<AssetInput>(() =>
@@ -698,16 +790,11 @@ function AssetEditor({
             onChange={(e) => change('name', e.target.value)}
           />
         </label>
-        <label>
-          Class
-          <select
-            value={input.assetClass}
-            onChange={(e) => change('assetClass', e.target.value)}
-          >
-            <option value="air_conditioner">Air conditioner</option>
-            <option value="appliance">Appliance</option>
-          </select>
-        </label>
+        <AssetClassSelect
+          base={base}
+          value={input.assetClass}
+          onChange={(v) => change('assetClass', v)}
+        />
         <label>
           Location
           <input
@@ -754,6 +841,16 @@ function AssetEditor({
             placeholder="Access constraints, weathering, observations…"
           />
         </label>
+        <AssetDetailsEditor
+          base={base}
+          value={input.details ?? {}}
+          assetClass={input.assetClass}
+          canFinance={canFinance}
+          onChange={(details) => {
+            setDirty(true);
+            setInput((old) => ({ ...old, details }));
+          }}
+        />
         {!readOnly && (
           <div className="actions wide">
             <button
@@ -774,6 +871,25 @@ function AssetEditor({
             )}
             {savedDraft && dirty && (
               <p>Save your draft changes before creating the asset.</p>
+            )}
+            {savedDraft && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Permanently delete this saved draft?'))
+                    void mutation
+                      .save(
+                        'drafts/' + savedDraft.id,
+                        'DELETE',
+                        {},
+                        savedDraft.version,
+                      )
+                      .then(after)
+                      .catch(() => {});
+                }}
+              >
+                Delete draft
+              </button>
             )}
           </div>
         )}

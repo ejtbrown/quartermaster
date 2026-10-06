@@ -8,7 +8,7 @@ describe('disposable CI toolchain installation', () => {
       'utf8',
     );
     expect(pipeline).toMatch(
-      /Action\s*=\s*\["lambda:GetAlias",\s*"lambda:UpdateAlias"\],\s*Resource\s*=\s*aws_lambda_function\.api\.arn\s*}/,
+      /Action\s*=\s*\["lambda:GetAlias",\s*"lambda:UpdateAlias"\],\s*Resource\s*=\s*concat\(\[aws_lambda_function\.api\.arn\],\s*var.enable_workspace\s*\?\s*\[local.worker_arn\]\s*:\s*\[\]\)/,
     );
   });
 

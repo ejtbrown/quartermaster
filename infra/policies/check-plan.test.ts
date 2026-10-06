@@ -100,6 +100,51 @@ const database = {
     { min_capacity: 0, max_capacity: 4, seconds_until_auto_pause: 300 },
   ],
 };
+it('permits only bounded on-demand worker resources and never resized photo expiry', () => {
+  const worker = {
+    function_name: 'quartermaster-dev-worker',
+    timeout: 180,
+    reserved_concurrent_executions: 2,
+    memory_size: 1024,
+    vpc_config: [],
+  };
+  expect(inspectPlan(plan('aws_lambda_function', worker))).toEqual([]);
+  expect(
+    inspectPlan(
+      plan('aws_lambda_function', { ...worker, memory_size: 4096 }),
+    ).join(),
+  ).toContain('memory 1024');
+  const queue = {
+    name: 'quartermaster-dev-jobs',
+    sqs_managed_sse_enabled: true,
+    message_retention_seconds: 345600,
+  };
+  expect(inspectPlan(plan('aws_sqs_queue', queue))).toEqual([]);
+  expect(
+    inspectPlan(
+      plan('aws_sqs_queue', { ...queue, sqs_managed_sse_enabled: false }),
+    ).join(),
+  ).toContain('encrypted');
+  expect(
+    inspectPlan(
+      plan('aws_s3_bucket_lifecycle_configuration', {
+        rule: [
+          {
+            status: 'Enabled',
+            filter: [{ prefix: 'resized/' }],
+            expiration: [{ days: 15 }],
+          },
+        ],
+      }),
+    ).join(),
+  ).toContain('never resized');
+  const key = plan('aws_kms_key', {
+    enable_key_rotation: true,
+    deletion_window_in_days: 30,
+  });
+  key.resource_changes[0]!.address = 'module.foundation.aws_kms_key.operations';
+  expect(inspectPlan(key)).toEqual([]);
+});
 
 const backupRules = [
   {

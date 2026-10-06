@@ -72,7 +72,7 @@ resource "aws_cloudfront_function" "security" {
   name    = "${local.name}-security"
   runtime = "cloudfront-js-2.0"
   publish = true
-  code    = file("${path.module}/../../../services/edge/security.js")
+  code    = replace(file("${path.module}/../../../services/edge/security.js"), "QM_MEDIA_ORIGIN", "https://${local.media_bucket}.s3.${local.region}.amazonaws.com")
 }
 resource "aws_cloudfront_distribution" "site" {
   enabled             = var.publish_site

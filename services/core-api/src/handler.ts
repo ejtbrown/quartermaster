@@ -4,6 +4,7 @@ import { DataApiDatabase } from './database';
 import { Operations } from './operations';
 import { Problem, json } from './http';
 import type { Request } from './http';
+import { AwsPlatform } from './platform';
 
 export function application(auth?: Auth, operations?: Operations) {
   return async (request: Request) => {
@@ -15,9 +16,9 @@ export function application(auth?: Auth, operations?: Operations) {
       if ((path === '/health' || path === '/api/health') && method === 'GET')
         return json(200, {
           service: 'quartermaster',
-          status: auth && operations ? 'synthetic-workspace' : 'foundation',
+          status: auth && operations ? 'workspace' : 'unconfigured',
           assetApiReady: Boolean(auth && operations),
-          syntheticOnly: true,
+          syntheticOnly: false,
           release: process.env.QM_RELEASE_SHA ?? 'local-preview',
         });
       if (path === '/api/auth/session' && method === 'GET' && !auth)
@@ -27,7 +28,9 @@ export function application(auth?: Auth, operations?: Operations) {
         });
       if (!auth || !operations) throw new Problem(404, 'not_found');
       if (path === '/api/auth/login' && method === 'GET')
-        return await auth.login();
+        return await auth.login(
+          new URLSearchParams(request.rawQueryString).get('reauth') === '1',
+        );
       if (path === '/api/auth/callback' && method === 'GET')
         return await auth.callback(request);
       if (
@@ -46,6 +49,9 @@ export function application(auth?: Auth, operations?: Operations) {
                 actorId: session.actorId,
                 csrfToken: session.csrf,
                 expiresAt: new Date(session.expiresAt * 1000).toISOString(),
+                authenticatedAt: new Date(
+                  session.authenticatedAt * 1000,
+                ).toISOString(),
                 memberships: await operations.memberships(session.actorId),
               }
             : { authenticated: false, authenticationEnabled: true },
@@ -58,7 +64,14 @@ export function application(auth?: Auth, operations?: Operations) {
         return json(200, {
           memberships: await operations.memberships(session.actorId),
         });
-      return json(200, await operations.handle(session.actorId, request));
+      return json(
+        200,
+        await operations.handle(
+          session.actorId,
+          request,
+          session.authenticatedAt,
+        ),
+      );
     } catch (error) {
       const problem =
         error instanceof Problem
@@ -70,6 +83,11 @@ export function application(auth?: Auth, operations?: Operations) {
             event: 'request_failed',
             requestId,
             code: problem.code,
+            errorType: error instanceof Error ? error.name : 'Unknown',
+            sqlState:
+              error instanceof Error
+                ? error.message.match(/SQLState:\s*([A-Z0-9]{5})/)?.[1]
+                : undefined,
           }),
         );
       if (path === '/api/auth/callback' && method === 'GET') {
@@ -147,6 +165,7 @@ export async function handler(request: Request) {
             secretArn: secretArn!,
             database: 'quartermaster',
           }),
+          new AwsPlatform(),
         ),
       );
     } else configured = application();

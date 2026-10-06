@@ -6,9 +6,19 @@ import { resolve } from 'node:path';
 import { DataApiDatabase } from './database';
 import { migrate } from './migrations';
 import { integration } from './integration';
+import { cloudIntegration } from './cloud-integration';
 import { initialCredentialStages } from './credential-stages';
 import { Identifier, Capability } from '@quartermaster/contracts';
 import { RDSDataClient } from '@aws-sdk/client-rds-data';
+import {
+  SchedulerClient,
+  CreateScheduleCommand,
+} from '@aws-sdk/client-scheduler';
+import {
+  CognitoIdentityProviderClient,
+  AdminCreateUserCommand,
+  AdminGetUserCommand,
+} from '@aws-sdk/client-cognito-identity-provider';
 import {
   SecretsManagerClient,
   DescribeSecretCommand,
@@ -18,13 +28,12 @@ import {
 } from '@aws-sdk/client-secrets-manager';
 
 // Operator-only tool. Not part of the Lambda artifact or normal release.
-// Every mutation needs a named command and account confirmation. No invites or
-// user provisioning are performed; use Cognito's operator console separately.
+// Every mutation needs a named command and exact development-account confirmation.
 const command = process.argv[2];
 async function main() {
   if (command === '--help') {
     console.log(
-      'Usage: workspace-admin.mjs migrate|credentials|grant|revoke|check|integration',
+      'Usage: workspace-admin.mjs migrate|credentials|worker-credentials|invite|grant|revoke|check|worker-check|integration|cloud-check',
     );
     return;
   }
@@ -32,10 +41,14 @@ async function main() {
     [
       'migrate',
       'credentials',
+      'worker-credentials',
+      'worker-check',
+      'invite',
       'grant',
       'revoke',
       'check',
       'integration',
+      'cloud-check',
     ].includes(command ?? ''),
     'Usage: workspace-admin.mjs migrate|credentials|grant|revoke|check',
   );
@@ -126,6 +139,45 @@ async function main() {
     maxAttempts: 2,
     credentials: client.config.credentials,
   });
+  const scheduleAuditExpiry = async (tenant: string) => {
+    const at = new Date();
+    at.setUTCFullYear(at.getUTCFullYear() + 1);
+    at.setUTCHours(23, 59, 59, 0);
+    try {
+      await new SchedulerClient({
+        region,
+        credentials: client.config.credentials,
+      }).send(
+        new CreateScheduleCommand({
+          Name: `qm-owner-${tenant}-${at.toISOString().slice(0, 10)}`,
+          GroupName: 'quartermaster-dev-estate',
+          ScheduleExpression: `at(${at.toISOString().slice(0, 19)})`,
+          ScheduleExpressionTimezone: 'UTC',
+          FlexibleTimeWindow: { Mode: 'OFF' },
+          ActionAfterCompletion: 'DELETE',
+          Target: {
+            Arn: `arn:aws:lambda:${region}:${account}:function:quartermaster-dev-worker:live`,
+            RoleArn: `arn:aws:iam::${account}:role/quartermaster-dev-scheduler`,
+            Input: JSON.stringify({
+              tenant,
+              kind: 'expiry',
+              id: '',
+              scheduledAt: at.toISOString(),
+            }),
+            RetryPolicy: {
+              MaximumEventAgeInSeconds: 86400,
+              MaximumRetryAttempts: 10,
+            },
+            DeadLetterConfig: {
+              Arn: `arn:aws:sqs:${region}:${account}:quartermaster-dev-jobs-dlq`,
+            },
+          },
+        }),
+      );
+    } catch (e) {
+      if (!(e instanceof Error) || e.name !== 'ConflictException') throw e;
+    }
+  };
   const cluster = (
     aws('rds', 'describe-db-clusters', {
       DBClusterIdentifier: 'quartermaster-dev',
@@ -148,6 +200,10 @@ async function main() {
       client,
     );
   const master = database(cluster.MasterUserSecret.SecretArn);
+  if (command === 'cloud-check') {
+    await cloudIntegration(master, client.config.credentials, account!);
+    return;
+  }
   if (command === 'integration') {
     const secret = await secrets.send(
       new DescribeSecretCommand({
@@ -174,7 +230,11 @@ async function main() {
     console.log(JSON.stringify({ applied }));
     return;
   }
-  if (command === 'credentials') {
+  if (command === 'credentials' || command === 'worker-credentials') {
+    const worker = command === 'worker-credentials',
+      login = worker ? 'qm_worker_runtime' : 'qm_runtime',
+      roleName = worker ? 'qm_worker' : 'qm_app',
+      secretName = worker ? 'database-worker' : 'database-runtime';
     const configuration = aws('lambda', 'get-function-configuration', {
       FunctionName: 'quartermaster-dev-api',
       Qualifier: 'live',
@@ -183,25 +243,26 @@ async function main() {
       configuration.Environment as
         { Variables?: Record<string, string> } | undefined
     )?.Variables;
-    assert.notEqual(
-      variables?.QM_WORKSPACE_ENABLED,
-      'true',
-      'Disable the workspace before initializing/rotating credentials',
-    );
+    if (!worker)
+      assert.notEqual(
+        variables?.QM_WORKSPACE_ENABLED,
+        'true',
+        'Disable the workspace before initializing/rotating credentials',
+      );
     const secret = await secrets.send(
       new DescribeSecretCommand({
-        SecretId: 'quartermaster-dev/database-runtime',
+        SecretId: 'quartermaster-dev/' + secretName,
       }),
     );
     const arn = String(secret.ARN);
     assert.ok(
       arn.startsWith(
-        `arn:aws:secretsmanager:${region}:${account}:secret:quartermaster-dev/database-runtime-`,
+        `arn:aws:secretsmanager:${region}:${account}:secret:quartermaster-dev/${secretName}-`,
       ),
     );
     const versions = secret.VersionIdsToStages as
       Record<string, string[]> | undefined;
-    const { current, pending } = initialCredentialStages(versions);
+    const { pending } = initialCredentialStages(versions);
     let password: string, versionId: string;
     if (pending) {
       const value = await secrets.send(
@@ -214,7 +275,7 @@ async function main() {
         username: string;
         password: string;
       };
-      assert.equal(credentials.username, 'qm_runtime');
+      assert.equal(credentials.username, login);
       password = credentials.password;
       versionId = pending;
     } else {
@@ -225,7 +286,7 @@ async function main() {
           SecretId: arn,
           ClientRequestToken: versionId,
           VersionStages: ['AWSPENDING'],
-          SecretString: JSON.stringify({ username: 'qm_runtime', password }),
+          SecretString: JSON.stringify({ username: login, password }),
         }),
       );
     }
@@ -239,11 +300,11 @@ async function main() {
         rolinherit: boolean;
       }>(
         'SELECT rolsuper,rolbypassrls,rolcreatedb,rolcreaterole,rolinherit FROM pg_roles WHERE rolname=$1',
-        ['qm_runtime'],
+        [login],
       );
       if (!roles.length)
         await sql.query(
-          'CREATE ROLE qm_runtime LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS',
+          `CREATE ROLE ${login} LOGIN INHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`,
         );
       else
         assert.deepEqual(
@@ -258,14 +319,27 @@ async function main() {
           'Refuse an unexpectedly privileged existing runtime role',
         );
       // Generated hex only; PostgreSQL utility statements cannot bind passwords.
-      await sql.query(`ALTER ROLE qm_runtime PASSWORD '${password}'`);
-      await sql.query('GRANT qm_app TO qm_runtime');
-      await sql.query('ALTER ROLE qm_runtime SET statement_timeout = 4000');
+      await sql.query(`ALTER ROLE ${login} PASSWORD '${password}'`);
+      await sql.query(`GRANT ${roleName} TO ${login}`);
       await sql.query(
-        'ALTER ROLE qm_runtime SET idle_in_transaction_session_timeout = 30000',
+        `ALTER ROLE ${login} SET statement_timeout = ${worker ? 10000 : 4000}`,
+      );
+      await sql.query(
+        `ALTER ROLE ${login} SET idle_in_transaction_session_timeout = ${worker ? 120000 : 30000}`,
       );
     });
-    if (current !== versionId)
+    // AWS may automatically label the first newly written version CURRENT.
+    // Read back the stage instead of using the pre-write metadata snapshot.
+    const afterWrite = initialCredentialStages(
+      (await secrets.send(new DescribeSecretCommand({ SecretId: arn })))
+        .VersionIdsToStages,
+    );
+    assert.equal(
+      afterWrite.pending,
+      versionId,
+      'Credential changed during initialization',
+    );
+    if (afterWrite.current !== versionId)
       await secrets.send(
         new UpdateSecretVersionStageCommand({
           SecretId: arn,
@@ -285,10 +359,13 @@ async function main() {
     );
     return;
   }
-  if (command === 'check') {
+  if (command === 'check' || command === 'worker-check') {
+    const worker = command === 'worker-check';
     const secret = await secrets.send(
       new DescribeSecretCommand({
-        SecretId: 'quartermaster-dev/database-runtime',
+        SecretId: worker
+          ? 'quartermaster-dev/database-worker'
+          : 'quartermaster-dev/database-runtime',
       }),
     );
     await database(String(secret.ARN)).transaction(async (sql) => {
@@ -297,7 +374,7 @@ async function main() {
         safe: boolean;
       }>(`SELECT current_user AS name, NOT rolsuper AND NOT rolbypassrls
         AND NOT pg_has_role(current_user,(SELECT relowner FROM pg_class WHERE oid='qm.assets'::regclass),'MEMBER') AS safe FROM pg_roles WHERE rolname=current_user`);
-      assert.equal(role?.name, 'qm_runtime');
+      assert.equal(role?.name, worker ? 'qm_worker_runtime' : 'qm_runtime');
       assert.equal(role.safe, true);
       assert.deepEqual(
         await sql.query('SELECT id FROM qm.assets'),
@@ -309,6 +386,101 @@ async function main() {
     });
     console.log(
       'Runtime role and unscoped RLS check passed. This is not an authenticated browser or restore test.',
+    );
+    return;
+  }
+  if (command === 'invite') {
+    const tenantId = Identifier.parse(process.env.QM_TENANT_ID),
+      email = process.env.QM_INVITE_EMAIL,
+      name = process.env.QM_TENANT_NAME,
+      pool = process.env.QM_USER_POOL_ID;
+    assert.equal(
+      email,
+      'self@ejtbrown.com',
+      'Initial owner invitation must match the approved recipient',
+    );
+    assert.equal(name, 'Quartermaster');
+    assert.match(pool ?? '', /^us-east-2_[a-zA-Z0-9]+$/);
+    const description = aws('cognito-idp', 'describe-user-pool', {
+      UserPoolId: pool,
+    });
+    assert.equal(
+      (description.UserPool as { Name: string }).Name,
+      'quartermaster-dev',
+    );
+    const cognito = new CognitoIdentityProviderClient({
+      region,
+      credentials: client.config.credentials,
+    });
+    let subject: string | undefined;
+    try {
+      const created = await cognito.send(
+        new AdminCreateUserCommand({
+          UserPoolId: pool,
+          Username: email,
+          UserAttributes: [
+            { Name: 'email', Value: email },
+            { Name: 'email_verified', Value: 'true' },
+          ],
+          DesiredDeliveryMediums: ['EMAIL'],
+        }),
+      );
+      subject = created.User?.Attributes?.find((a) => a.Name === 'sub')?.Value;
+    } catch (error) {
+      if (!(error instanceof Error) || error.name !== 'UsernameExistsException')
+        throw error;
+      const existing = await cognito.send(
+        new AdminGetUserCommand({ UserPoolId: pool, Username: email }),
+      );
+      assert.equal(existing.Enabled, true);
+      subject = existing.UserAttributes?.find((a) => a.Name === 'sub')?.Value;
+    }
+    const actorId = Identifier.parse(subject);
+    await scheduleAuditExpiry(tenantId);
+    await master.transaction(async (sql) => {
+      const rows = await sql.query<{
+        id: string;
+        name: string;
+        deleted_at: string | null;
+      }>('SELECT id,name,deleted_at FROM qm.tenants WHERE id=$1::uuid', [
+        tenantId,
+      ]);
+      if (rows.length) {
+        assert.equal(rows[0]!.name, name);
+        assert.equal(rows[0]!.deleted_at, null);
+      } else
+        await sql.query(
+          'INSERT INTO qm.tenants(id,name,synthetic) VALUES($1::uuid,$2,false)',
+          [tenantId, name],
+        );
+      const inserted = await sql.query(
+        'INSERT INTO qm.memberships(tenant_id,actor_id,email,capabilities) VALUES($1::uuid,$2::uuid,$3,ARRAY(SELECT jsonb_array_elements_text($4::jsonb))) ON CONFLICT DO NOTHING RETURNING actor_id',
+        [tenantId, actorId, email, JSON.stringify(Capability.options)],
+      );
+      if (inserted.length)
+        await sql.query(
+          "INSERT INTO qm.audit_events(tenant_id,id,entity_id,operator_id,action,expires_at) VALUES($1::uuid,$2::uuid,$3::uuid,$4,'membership.invited',now()+interval '1 year')",
+          [tenantId, randomUUID(), actorId, String(operatorIdentity.UserId)],
+        );
+      assert.equal(
+        (
+          await sql.query<{ count: number }>(
+            'SELECT count(*)::int AS count FROM qm.assets WHERE tenant_id=$1::uuid',
+            [tenantId],
+          )
+        )[0]!.count,
+        0,
+        'Initial workspace must be empty',
+      );
+    });
+    console.log(
+      JSON.stringify({
+        invitationRecipient: email,
+        tenantId,
+        actorId,
+        workspace: name,
+        assetCount: 0,
+      }),
     );
     return;
   }
@@ -338,6 +510,9 @@ async function main() {
     'Cognito subject does not match',
   );
   await master.transaction(async (sql) => {
+    await sql.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+      'estate:' + tenantId,
+    ]);
     const recordAccessChange = () =>
       sql.query(
         `INSERT INTO qm.audit_events(tenant_id,id,entity_id,operator_id,action,expires_at)
@@ -350,15 +525,22 @@ async function main() {
           command === 'grant' ? 'membership.granted' : 'membership.revoked',
         ],
       );
-    const [tenant] = await sql.query<{ synthetic: boolean }>(
-      'SELECT synthetic FROM qm.tenants WHERE id=$1::uuid',
+    const [tenant] = await sql.query<{ deleted_at: string | null }>(
+      'SELECT deleted_at FROM qm.tenants WHERE id=$1::uuid',
       [tenantId],
     );
     if (command === 'revoke') {
-      assert.equal(
-        tenant?.synthetic,
-        true,
-        'Only synthetic membership is in scope',
+      assert.ok(
+        tenant && tenant.deleted_at === null,
+        'Workspace must exist and be active',
+      );
+      const admins = await sql.query<{ actor_id: string }>(
+        "SELECT actor_id FROM qm.memberships WHERE tenant_id=$1::uuid AND active AND (expires_at IS NULL OR expires_at>now()) AND 'workspace:admin'=ANY(capabilities)",
+        [tenantId],
+      );
+      assert.ok(
+        admins.some((a) => a.actor_id !== actorId),
+        'Refuse to revoke the last administrator',
       );
       const changed = await sql.query(
         'UPDATE qm.memberships SET active=false WHERE tenant_id=$1::uuid AND actor_id=$2::uuid RETURNING actor_id',
@@ -373,31 +555,37 @@ async function main() {
       const name = process.env.QM_TENANT_NAME;
       assert.ok(
         name && name.trim().length > 0 && name.length <= 160,
-        'Set a synthetic workspace name',
+        'Set a workspace name',
       );
       await sql.query(
-        'INSERT INTO qm.tenants(id,name,synthetic) VALUES($1::uuid,$2,true)',
+        'INSERT INTO qm.tenants(id,name,synthetic) VALUES($1::uuid,$2,false)',
         [tenantId, name],
       );
-    } else
-      assert.equal(
-        tenant.synthetic,
-        true,
-        'Only synthetic workspaces can be onboarded',
-      );
+    } else assert.equal(tenant.deleted_at, null, 'Workspace was deleted');
     const capabilities = (process.env.QM_CAPABILITIES ?? 'assets:read')
       .split(',')
       .map((item) => Capability.parse(item));
     assert.ok(capabilities.includes('assets:read'));
+    if (!capabilities.includes('workspace:admin'))
+      assert.ok(
+        (
+          await sql.query(
+            "SELECT actor_id FROM qm.memberships WHERE tenant_id=$1::uuid AND actor_id<>$2::uuid AND active AND (expires_at IS NULL OR expires_at>now()) AND 'workspace:admin'=ANY(capabilities)",
+            [tenantId, actorId],
+          )
+        ).length,
+        'An active administrator is required',
+      );
     await sql.query(
       `INSERT INTO qm.memberships(tenant_id,actor_id,capabilities) VALUES($1::uuid,$2::uuid,ARRAY(SELECT jsonb_array_elements_text($3::jsonb)))
       ON CONFLICT(tenant_id,actor_id) DO UPDATE SET capabilities=EXCLUDED.capabilities,active=true,expires_at=NULL`,
       [tenantId, actorId, JSON.stringify(capabilities)],
     );
     await recordAccessChange();
+    await scheduleAuditExpiry(tenantId);
   });
   console.log(
-    `${command} completed for the specified synthetic membership; no identity created or invitation sent.`,
+    `${command} completed for the specified membership; no identity created or invitation sent.`,
   );
 }
 main().catch((error: unknown) => {

@@ -28,6 +28,7 @@ it('runs deployment checks with a non-superuser owner and cleans only its own fi
         '0001_asset_foundation.sql',
         '0002_authenticated_operations.sql',
         '0003_operator_rls_access.sql',
+        '0004_operational_estate.sql',
       ].map(async (name) => ({
         name,
         source: await readFile(

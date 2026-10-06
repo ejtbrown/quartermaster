@@ -21,14 +21,14 @@ review_scope:
     - 'Resource entries below describe the complete target; implementation_evidence identifies which subset is actually deployed. Proposed resources must not be treated as live inventory.'
     - "Production domain remains undecided; development/testing uses the default profile's account, with a separate production account created only after church acceptance."
 implementation_evidence:
-  active_milestone: '2026-09-25: authenticated synthetic manual workspace deployed through automatic dev-push CodePipeline; Aurora integration and independent public/provider-entry checks passed'
-  status: 'data/governance, identity and synthetic manual operations deployed; account setup deferred; real data, photos, AI and purge remain disabled'
+  active_milestone: '2026-10-06: operational foundation/delivery and migration 0004 applied; dev application release verification in progress'
+  status: 'ordinary empty workspace and invitation authorized; real workflows implemented locally; consult IMPLEMENTATION for verified rollout evidence'
   source: 'docs/IMPLEMENTATION.md'
   latest_client_decision: '2026-09-25: online-only shared mobile/desktop web accepted; native builds and offline queues deferred; design update only'
-  web: 'apps/web: invitation-only landing, manual synthetic workspace and sample register deployed at https://qm.ejtbrown.com; no users created'
-  core_api: 'services/core-api: Cognito/BFF sessions, tenant-authorized assets/tasks/readings/drafts/audit; liveness and anonymous requests do not wake the database'
+  web: 'apps/web: responsive ordinary workspace, no seeded register; capture, estate modules, reports, team and lifecycle UI'
+  core_api: 'services/core-api: Cognito/BFF, forced tenant/capability RLS, structured estate records, private uploads, reviewed capture, reports and durable jobs; anonymous liveness does not wake Aurora'
   contracts_and_policy: ['packages/contracts', 'packages/domain']
-  schema: 'Migrations 0001-0003 applied with checksum ledger; forced tenant RLS, restricted runtime role, explicit migration-owner recovery policy; PGlite and live two-tenant Aurora checks passed'
+  schema: 'Migrations 0001-0004 applied with checksum ledger; forced tenant RLS, separate non-owner application/worker credentials, migration-owner recovery policy; PGlite and actual Aurora role/two-tenant checks passed'
   terraform:
     [
       'infra/bootstrap',
@@ -59,9 +59,9 @@ implementation_evidence:
   latest_edge_preflight: '2026-09-25: Enabled/Deployed standard distribution/WAF verified; no subscription association; HTTPS/security headers and unsigned S3/Lambda origin 403 checks passed'
   live_checks: '32 control-plane checks pass; read-only Data API query succeeds; first encrypted 90-day backup completed; details in docs/DEPLOYMENT-2026-09-07.md'
   idle_observation: 'CloudWatch ServerlessDatabaseCapacity minimum and maximum 0.0 ACU at 2026-09-07 17:22/17:23/17:24 UTC; writer left idle'
-  alert_status: 'configured operator email confirmed; operations publishers/alarms not implemented'
+  alert_status: 'confirmed recipient; customer-managed SNS key plus backup/API/worker/DLQ alarms applied; labeled CloudWatch test successfully published to SNS, mailbox receipt not independently verified'
   cost_allocation_status: 'CostScope not yet exposed by AWS for activation; tag-filtered budget attribution pending'
-  destructive_content_cleanup: 'disabled pending backup-purge semantics and version-aware purge implementation'
+  destructive_content_cleanup: 'accepted inaccessible backups until expiry with deletion replay; implemented queued live/version-aware purge and independent on-demand deletion ledger, pending live acceptance'
 accepted_product_decisions:
   decision_date: '2026-09-06'
   owner: 'Erick Brown'
@@ -122,7 +122,7 @@ accepted_infrastructure_decisions:
   edge_billing: 'standard CloudFront and WAF pay-as-you-go; accepted 2026-09-24'
   latest_source: 'docs/decisions/0006-tiered-backups-and-standard-edge.md'
   destructive_cleanup_enabled: false
-  deletion_policy: 'purge content including resized photos; retain minimal metadata and deletion timestamp; backup-purge semantics pending'
+  deletion_policy: 'purge live content including resized photos and cached exports; retain minimal metadata/timestamp for backup horizon; inaccessible backup copies may expire normally, with deletion replay before restored access'
   availability_percent: 99.5
   cold_start_seconds: 60
   preferred_rpo_hours: 24

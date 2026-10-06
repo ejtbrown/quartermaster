@@ -71,7 +71,7 @@ run "budget_and_retention" {
     error_message = "Keep 12-hour snapshots for seven days and weekly snapshots for 90 days from creation."
   }
   assert {
-    condition     = one(aws_s3_bucket_lifecycle_configuration.media.rule).status == "Disabled" && one(aws_s3_bucket_lifecycle_configuration.media.rule).expiration[0].days == 15 && one(aws_s3_bucket_lifecycle_configuration.media.rule).filter[0].prefix == "originals/"
-    error_message = "Keep the disabled 15-day originals intent; resized photos must never inherit age-based expiry."
+    condition     = length(aws_s3_bucket_lifecycle_configuration.media.rule) == 3 && alltrue([for rule in aws_s3_bucket_lifecycle_configuration.media.rule : rule.status == "Enabled" && contains(["originals/", "quarantine/", "exports/"], rule.filter[0].prefix) && rule.expiration[0].days == (rule.filter[0].prefix == "quarantine/" ? 1 : 15)])
+    error_message = "Keep approved original/quarantine/export expiry; resized photos must never inherit age-based expiry."
   }
 }

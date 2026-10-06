@@ -1,11 +1,15 @@
 import { z } from 'zod';
+import { AssetDetails } from './operational';
+export * from './operational';
 export const Identifier = z.uuid();
 
-export const AssetClass = z.enum(['air_conditioner', 'appliance']);
+export const AssetClass = z.string().regex(/^[a-z][a-z0-9_]{0,59}$/);
 export const AssetStatus = z.enum([
   'in_service',
   'needs_attention',
   'out_of_service',
+  'retired',
+  'disposed',
 ]);
 export const Asset = z
   .object({
@@ -20,6 +24,7 @@ export const Asset = z
     model: z.string().max(120).nullable(),
     serialNumber: z.string().max(120).nullable(),
     notes: z.string().max(4000),
+    details: AssetDetails.optional(),
     updatedAt: z.iso.datetime(),
   })
   .strict();
@@ -37,6 +42,12 @@ export const Capability = z.enum([
   'assets:write',
   'maintenance:write',
   'audit:read',
+  'assets:delete',
+  'records:write',
+  'finance:write',
+  'rules:write',
+  'exports:read',
+  'workspace:admin',
 ]);
 export type Capability = z.infer<typeof Capability>;
 export const Membership = z
@@ -93,6 +104,7 @@ export interface SessionInfo {
   actorId?: string;
   csrfToken?: string;
   expiresAt?: string;
+  authenticatedAt?: string;
   memberships?: Membership[];
 }
 export interface AssetPage {
@@ -111,7 +123,15 @@ export const DeletionMetadata = z
   .object({
     entityId: z.uuid(),
     tenantId: z.uuid(),
-    entityType: z.enum(['asset', 'tenant', 'media', 'transcript']),
+    entityType: z.enum([
+      'asset',
+      'tenant',
+      'media',
+      'transcript',
+      'capture',
+      'draft',
+      'record',
+    ]),
     deletedAt: z.iso.datetime(),
     policyVersion: z.literal('2026-09-07'),
   })
@@ -131,5 +151,5 @@ export const DevelopmentSettings = Object.freeze({
   recoveryTimeHours: 24,
   preferredRecoveryPointHours: 24,
   maximumRecoveryPointHours: 168,
-  destructiveCleanupEnabled: false,
+  destructiveCleanupEnabled: true,
 });

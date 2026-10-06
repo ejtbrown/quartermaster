@@ -5,6 +5,13 @@ import { Auth, hash } from '../../services/core-api/src/auth';
 import type { AuthStore, Session } from '../../services/core-api/src/auth';
 import { application } from '../../services/core-api/src/handler';
 import { Operations } from '../../services/core-api/src/operations';
+import { Capability } from '../../packages/contracts/src/index';
+import { Worker } from '../../services/core-api/src/worker';
+import type {
+  Platform,
+  QueueMessage,
+} from '../../services/core-api/src/platform';
+import type { Database } from '../../services/core-api/src/database';
 
 // Browser -> actual API router -> actual PostgreSQL/RLS. Only Cognito and the
 // DynamoDB session lookup are injected; these are not live-provider/device tests.
@@ -23,6 +30,8 @@ test.beforeEach(async ({ page }) => {
   for (const file of [
     '0001_asset_foundation.sql',
     '0002_authenticated_operations.sql',
+    '0003_operator_rls_access.sql',
+    '0004_operational_estate.sql',
   ])
     await db.exec(await readFile('db/migrations/' + file, 'utf8'));
   await db.query('INSERT INTO qm.tenants(id,name) VALUES($1,$2)', [
@@ -31,11 +40,7 @@ test.beforeEach(async ({ page }) => {
   ]);
   await db.query(
     'INSERT INTO qm.memberships(tenant_id,actor_id,capabilities) VALUES($1,$2,$3)',
-    [
-      tenant,
-      actor,
-      ['assets:read', 'assets:write', 'maintenance:write', 'audit:read'],
-    ],
+    [tenant, actor, Capability.options],
   );
   session = {
     actorId: actor,
@@ -70,15 +75,81 @@ test.beforeEach(async ({ page }) => {
       throw new Error('Not a Cognito test');
     },
   );
-  const ops = new Operations({
+  const pending: QueueMessage[] = [];
+  const platform: Platform = {
+    enqueue: async (m) => {
+      pending.push(m);
+    },
+    schedule: async () => {},
+    invite: async () => ({ actorId: crypto.randomUUID(), created: true }),
+    model: async () => ({
+      text: JSON.stringify({
+        reply: 'Please review the insulation task and coil access note.',
+        fields: {
+          name: 'Roof AC',
+          assetClass: 'air_conditioner',
+          location: 'Roof northwest',
+          manufacturer: 'Test',
+          model: 'ZYX',
+          serialNumber: '1234',
+          notes: '',
+        },
+        components: [
+          {
+            name: 'Outdoor coil',
+            kind: 'coil',
+            accessConstraints: 'Cover screws rounded out',
+            notes: '',
+          },
+        ],
+        maintenance: [
+          {
+            title: 'Replace tubing insulation',
+            dueDate: '2026-12-31',
+            notes: '',
+          },
+        ],
+        readings: [
+          {
+            label: 'Compressor current',
+            value: 4.3,
+            unit: 'A',
+            notes: 'Volunteered observation',
+          },
+        ],
+        requestedPhoto: null,
+        readyForReview: true,
+      }),
+      model: 'test',
+      inputTokens: 1,
+      outputTokens: 1,
+    }),
+    transcribe: async () => 'Test voice observation',
+    upload: async () => {
+      throw new Error('Not a photo transport test');
+    },
+    headUpload: async () => {
+      throw new Error('Not a photo transport test');
+    },
+    download: async () => {
+      throw new Error('Not a signed URL test');
+    },
+    read: async () => new Uint8Array(),
+    write: async () => {},
+    purge: async () => {},
+    tombstone: async () => {},
+  };
+  const database = (role: string): Database => ({
     transaction: (action) =>
       db.transaction(async (tx) => {
-        await tx.exec('SET LOCAL ROLE qm_app');
+        await tx.exec(`SET LOCAL ROLE ${role}`);
         return action({
           query: async (q, v) => (await tx.query(q, v)).rows as never,
         });
       }),
   });
+  const ops = new Operations(database('qm_app'), platform),
+    worker = new Worker(database('qm_worker'), platform);
   const handle = application(auth, ops);
   await page.route('**/api/**', async (route) => {
     const request = route.request(),
@@ -105,8 +176,100 @@ test.beforeEach(async ({ page }) => {
       headers: result.headers,
       body: result.body,
     });
+    while (pending.length) await worker.run(pending.shift()!);
   });
   page.on('dialog', (dialog) => dialog.accept());
+});
+
+test('assisted capture keeps human review separate and commits components, tasks and readings together', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Capture', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Start capture', exact: true })
+    .click();
+  await page
+    .getByLabel('Your answer', { exact: true })
+    .fill(
+      'Add the roof AC. Coil cover screws are rounded out. Current is 4.3 amps and insulation needs replacing before year end.',
+    );
+  await page.getByRole('button', { name: 'Send answer', exact: true }).click();
+  await expect(
+    page
+      .locator('.transcript')
+      .getByText(/Please review the insulation task and coil access note/),
+  ).toBeVisible({ timeout: 15000 });
+  expect((await db.query('SELECT id FROM qm.assets')).rows).toHaveLength(0);
+  await page
+    .getByRole('button', { name: 'Apply proposal to review form' })
+    .click();
+  await expect(
+    page.getByLabel('Access Constraints', { exact: true }),
+  ).toHaveValue('Cover screws rounded out');
+  await page.getByRole('button', { name: 'Save draft details' }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Saved on the server' }),
+  ).toBeVisible();
+  await page
+    .getByRole('checkbox', {
+      name: 'I have reviewed the asset, photos, components, tasks and readings.',
+    })
+    .check();
+  await page.getByRole('button', { name: 'Create reviewed asset' }).click();
+  await expect(page.getByText(/Asset saved with the confirmed/)).toBeVisible();
+  expect(
+    (
+      await db.query(
+        "SELECT content->>'accessConstraints' AS note FROM qm.records WHERE kind='components'",
+      )
+    ).rows,
+  ).toEqual([{ note: 'Cover screws rounded out' }]);
+  expect((await db.query('SELECT value FROM qm.readings')).rows).toEqual([
+    { value: 4.3 },
+  ]);
+  expect(
+    (await db.query('SELECT due_date::text AS due FROM qm.maintenance')).rows,
+  ).toEqual([{ due: '2026-12-31' }]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test('creates an organizational location, edits it with history, and runs an empty report without demo data', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Locations', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Add Locations', exact: true })
+    .click();
+  await page.getByLabel('Name', { exact: true }).fill('Main building');
+  await page
+    .getByRole('button', { name: 'Save Locations', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Main building v1' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByLabel('Notes', { exact: true }).fill('North entrance');
+  await page
+    .getByRole('button', { name: 'Save Locations', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Main building v2' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Reports', exact: true }).click();
+  await page.getByRole('button', { name: 'Run report', exact: true }).click();
+  await expect(page.getByText('Preparing report…')).toHaveCount(0);
+  expect((await db.query('SELECT id FROM qm.assets')).rows).toHaveLength(0);
+  expect(
+    (await db.query('SELECT version FROM qm.record_history ORDER BY version'))
+      .rows,
+  ).toEqual([{ version: 1 }]);
 });
 test.afterEach(async () => {
   await db?.close();

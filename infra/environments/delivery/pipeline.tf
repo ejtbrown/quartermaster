@@ -59,11 +59,11 @@ resource "aws_iam_role_policy" "deploy" {
     Statement = [
       { Effect = "Allow", Action = ["s3:PutObject", "s3:GetObject", "s3:GetObjectVersion"], Resource = "${aws_s3_bucket.delivery["web"].arn}/*" },
       { Effect = "Allow", Action = ["s3:ListBucket", "s3:GetBucketLocation"], Resource = aws_s3_bucket.delivery["web"].arn },
-      { Effect = "Allow", Action = ["lambda:UpdateFunctionCode", "lambda:GetFunctionConfiguration", "lambda:GetFunction", "lambda:PublishVersion"], Resource = aws_lambda_function.api.arn },
+      { Effect = "Allow", Action = ["lambda:UpdateFunctionCode", "lambda:GetFunctionConfiguration", "lambda:GetFunction", "lambda:PublishVersion"], Resource = concat([aws_lambda_function.api.arn], var.enable_workspace ? [local.worker_arn] : []) },
       # Alias-management APIs authorize against the unqualified function ARN.
       # Runtime invocation remains qualified; no other function is granted.
-      { Effect = "Allow", Action = ["lambda:GetAlias", "lambda:UpdateAlias"], Resource = aws_lambda_function.api.arn },
-      { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = "${aws_lambda_function.api.arn}:*" },
+      { Effect = "Allow", Action = ["lambda:GetAlias", "lambda:UpdateAlias"], Resource = concat([aws_lambda_function.api.arn], var.enable_workspace ? [local.worker_arn] : []) },
+      { Effect = "Allow", Action = ["lambda:InvokeFunction"], Resource = concat(["${aws_lambda_function.api.arn}:*"], var.enable_workspace ? ["${local.worker_arn}:*"] : []) },
       { Effect = "Allow", Action = ["cloudfront:CreateInvalidation", "cloudfront:GetInvalidation", "cloudfront:GetDistribution"], Resource = aws_cloudfront_distribution.site.arn },
       { Effect = "Allow", Action = ["wafv2:GetWebACL"], Resource = aws_wafv2_web_acl.site.arn },
       # ListSubscriptions has no resource-level IAM scope. Read metadata only;
@@ -139,6 +139,7 @@ resource "aws_codebuild_project" "release" {
         QM_EXPECTED_ACCOUNT_ID = var.expected_account_id
         QM_WEB_BUCKET          = aws_s3_bucket.delivery["web"].id
         QM_API_FUNCTION        = aws_lambda_function.api.function_name
+        QM_WORKER_FUNCTION     = var.enable_workspace ? "${local.name}-worker" : ""
         QM_DISTRIBUTION_ID     = aws_cloudfront_distribution.site.id
         QM_PUBLIC_URL          = "https://${local.domain}"
         QM_EXPECT_WORKSPACE    = tostring(var.enable_workspace)

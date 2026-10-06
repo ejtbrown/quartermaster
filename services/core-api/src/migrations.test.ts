@@ -30,6 +30,7 @@ it('runs the operator migration path transactionally, verifies checksums and is 
         '0001_asset_foundation.sql',
         '0002_authenticated_operations.sql',
         '0003_operator_rls_access.sql',
+        '0004_operational_estate.sql',
       ].map(async (name) => ({
         name,
         source: await readFile(
@@ -47,13 +48,14 @@ it('runs the operator migration path transactionally, verifies checksums and is 
         { ...files[0]!, source: files[0]!.source + '\n-- tamper' },
         files[1]!,
         files[2]!,
+        files[3]!,
       ]),
     ).rejects.toThrow('checksum');
     await expect(
       migrate(adapter, [
         ...files,
         {
-          name: '0004_bad.sql',
+          name: '0005_bad.sql',
           source:
             'CREATE TABLE qm.should_rollback(id int); SELECT missing_function();',
         },

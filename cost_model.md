@@ -2,6 +2,12 @@
 
 Status: design estimate, not a quote
 
+## October operational increment
+
+The operational release adds one worker credential, a project-scoped alert encryption key, failure metrics/alarms, SQS, one-time Scheduler tasks, an on-demand deletion ledger, S3 operations and actual AI/speech usage. It adds no NAT, database minimum capacity, provisioned concurrency or continuously running runner. The alert key has a $1/month initial key charge before requests/rotation additions ([KMS pricing](https://aws.amazon.com/kms/pricing/), checked October 6); the extra credential uses the existing Secrets Manager rate assumption below. Do not treat the old $9.92 component illustration as the complete operational stack estimate.
+
+The $100/month development budget remains unchanged. AI admission is capped at 100 calls/day and speech at 900 billed-admission seconds/day, both globally and per tenant. Failed attempts consume limits. These controls bound those request volumes, not all AWS charges: storage, build minutes, active database time, logging, recovery and retries still need measured billing review. Ordinary idle periods have zero application compute; expiry and maintenance deadlines cause real, short-lived work rather than keep-alive traffic.
+
 ## Current development decision — 2026-09-24
 
 This section supersedes older Free-plan and twice-daily/90-day assumptions below for development. The owner selected standard CloudFront + WAF and weekly historical snapshots. Ohio native PITR remains seven days; snapshots run every 12 hours with seven-day retention, plus Sundays at 00:00 UTC with 90-day retention from creation. Overlapping windows retain the longer-lived recovery point. Existing snapshots retain their original expiry; no pruning is authorized.

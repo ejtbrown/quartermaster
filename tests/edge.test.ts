@@ -17,10 +17,12 @@ it('rewrites navigation but not assets or unknown API paths', () => {
   );
   expect(edge('navigation', { request: { uri: '/api' } }).statusCode).toBe(404);
 });
-it('locks down the preview without enabling camera or microphone', () => {
+it('allows same-origin capture while keeping script and framing restrictions', () => {
   const result = edge('security', { response: { headers: {} } });
   expect(result.headers['content-security-policy'].value).toContain(
     "frame-ancestors 'none'",
   );
-  expect(result.headers['permissions-policy'].value).toContain('microphone=()');
+  expect(result.headers['permissions-policy'].value).toContain(
+    'microphone=(self)',
+  );
 });

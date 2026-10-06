@@ -64,7 +64,7 @@ export class Auth {
     private now = () => Math.floor(Date.now() / 1000),
   ) {}
 
-  async login() {
+  async login(reauth = false) {
     const state = opaque(),
       binding = opaque(),
       verifier = opaque(),
@@ -87,6 +87,10 @@ export class Auth {
       code_challenge: createHash('sha256').update(verifier).digest('base64url'),
       code_challenge_method: 'S256',
     }).toString();
+    if (reauth) {
+      url.searchParams.set('prompt', 'login');
+      url.searchParams.set('max_age', '0');
+    }
     return json(302, {}, [browserCookie(FLOW, binding, 600)], {
       location: url.toString(),
     });

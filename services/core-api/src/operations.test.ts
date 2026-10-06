@@ -57,6 +57,8 @@ beforeAll(async () => {
   for (const file of [
     '0001_asset_foundation.sql',
     '0002_authenticated_operations.sql',
+    '0003_operator_rls_access.sql',
+    '0004_operational_estate.sql',
   ])
     await db.exec(
       await readFile(
@@ -153,12 +155,16 @@ describe(
           [],
         );
       });
-      await expect(
-        db.transaction(async (tx) => {
-          await tx.exec('SET LOCAL ROLE qm_app');
-          await tx.query('UPDATE qm.memberships SET active=true');
-        }),
-      ).rejects.toThrow(/permission denied/);
+      await db.transaction(async (tx) => {
+        await tx.exec('SET LOCAL ROLE qm_app');
+        expect(
+          (
+            await tx.query(
+              'UPDATE qm.memberships SET active=true RETURNING actor_id',
+            )
+          ).rows,
+        ).toEqual([]);
+      });
     });
     it('prevents stale updates and requires a version', async () => {
       const id = (await call('assets')).items[0]!.id;
@@ -236,7 +242,7 @@ describe(
       expect((await call('drafts')).items).toEqual([]);
       expect((await call('assets')).items).toHaveLength(2);
     });
-    it('rolls back invalid drafts, forbids deletion and fails closed on real-data tenants', async () => {
+    it('rolls back invalid drafts, requires deletion capability and accepts ordinary tenants', async () => {
       const draft = await call('drafts', 'POST', { name: 'Incomplete' });
       await expect(
         call(
@@ -249,13 +255,13 @@ describe(
       expect((await call('drafts')).items).toHaveLength(1);
       await expect(
         call('assets/' + randomUUID(), 'DELETE'),
-      ).rejects.toMatchObject({ code: 'purge_policy_pending' });
+      ).rejects.toMatchObject({ code: 'capability_required' });
       await db.query('UPDATE qm.tenants SET synthetic=false WHERE id=$1', [
         tenantB,
       ]);
       await expect(
         ops.handle(actorB, request('assets', 'GET', undefined, {}, tenantB)),
-      ).rejects.toMatchObject({ code: 'pilot_not_enabled' });
+      ).resolves.toMatchObject({ items: [] });
     });
     it('revocation takes effect without waiting for a web session to expire', async () => {
       await db.query(
@@ -285,7 +291,7 @@ describe(
         call('assets', 'POST', { ...asset, tenantId: tenantB }),
       ).rejects.toMatchObject({ code: 'invalid_fields' });
       await expect(
-        call('assets', 'POST', { ...asset, notes: 'x'.repeat(17000) }),
+        call('assets', 'POST', { ...asset, notes: 'x'.repeat(33000) }),
       ).rejects.toMatchObject({ code: 'request_too_large' });
       const search = request('assets');
       search.rawQueryString = new URLSearchParams({

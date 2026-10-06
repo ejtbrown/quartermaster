@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 // @ts-expect-error The deploy helper deliberately has no build-time dependencies.
 import { validReleasePath } from '../tools/release-files.mjs';
 
-it.each(['api.zip', 'web/index.html', 'web/assets/main-123.js'])(
+it.each(['api.zip', 'worker.zip', 'web/index.html', 'web/assets/main-123.js'])(
   'accepts release artifact %s',
   (path) => expect(validReleasePath(path)).toBe(true),
 );

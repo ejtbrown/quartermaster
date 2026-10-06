@@ -8,29 +8,33 @@ import {
 } from '@quartermaster/contracts';
 import type { Capability, Membership } from '@quartermaster/contracts';
 import type { Database, Sql } from './database';
+import { boundedRows } from './database';
 import { Problem, header } from './http';
 import type { Request } from './http';
+import { features, validateAsset } from './features';
+import type { Platform } from './platform';
+import { queueJob, changed, recent } from './feature-context';
 
-const assetColumns = `id, tenant_id AS "tenantId", version, name, asset_class AS "assetClass", status, location,
-  manufacturer, model, serial_number AS "serialNumber", notes,
+export const assetColumns = `id, tenant_id AS "tenantId", version, name, asset_class AS "assetClass", status, location,
+  manufacturer, model, serial_number AS "serialNumber", notes, details,
   to_char(updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "updatedAt"`;
-const maintenanceColumns = `id, asset_id AS "assetId", version, title, due_date::text AS "dueDate", status, notes,
+export const maintenanceColumns = `id, asset_id AS "assetId", version, title, due_date::text AS "dueDate", status, notes,
   to_char(updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "updatedAt"`;
 const readingColumns = `id, asset_id AS "assetId", label, value, unit, notes,
   to_char(observed_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "observedAt"`;
 const draftColumns = `id, version, content, to_char(updated_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS "updatedAt"`;
 const membershipSql = `SELECT m.tenant_id AS "tenantId", t.name, to_json(m.capabilities) AS capabilities, t.synthetic
-  FROM qm.memberships m JOIN qm.tenants t ON t.id=m.tenant_id ORDER BY t.id LIMIT 101`;
-function identifier(value: unknown) {
+  FROM qm.memberships m JOIN qm.tenants t ON t.id=m.tenant_id WHERE m.actor_id=qm.current_actor() AND m.active AND (m.expires_at IS NULL OR m.expires_at>now()) AND t.deleted_at IS NULL ORDER BY t.id LIMIT 101`;
+export function identifier(value: unknown) {
   const parsed = Identifier.safeParse(value);
   if (!parsed.success) throw new Problem(400, 'invalid_identifier');
   return parsed.data;
 }
-function body(request: Request): unknown {
+export function body(request: Request, limit = 32000): unknown {
   const text = request.isBase64Encoded
     ? Buffer.from(request.body ?? '', 'base64').toString('utf8')
     : (request.body ?? '');
-  if (Buffer.byteLength(text) > 16000)
+  if (Buffer.byteLength(text) > limit)
     throw new Problem(413, 'request_too_large');
   if (
     header(request, 'content-type')?.split(';')[0]?.trim() !==
@@ -43,7 +47,7 @@ function body(request: Request): unknown {
     throw new Problem(400, 'invalid_json');
   }
 }
-function parse<T>(
+export function parse<T>(
   schema: {
     safeParse(input: unknown): { success: true; data: T } | { success: false };
   },
@@ -53,17 +57,17 @@ function parse<T>(
   if (!result.success) throw new Problem(422, 'invalid_fields');
   return result.data;
 }
-function version(request: Request) {
+export function version(request: Request) {
   const value = header(request, 'if-match');
   if (!value || !/^"[1-9][0-9]{0,8}"$/.test(value))
     throw new Problem(428, 'version_required');
   return Number(value.slice(1, -1));
 }
-function first<T>(rows: T[], status = 404, code = 'not_found'): T {
+export function first<T>(rows: T[], status = 404, code = 'not_found'): T {
   if (!rows[0]) throw new Problem(status, code);
   return rows[0];
 }
-async function context(sql: Sql, actorId: string, tenantId?: string) {
+export async function context(sql: Sql, actorId: string, tenantId?: string) {
   await sql.query(
     "SELECT set_config('qm.actor_id',$1,true), set_config('qm.tenant_id',$2,true), set_config('statement_timeout','4000',true), set_config('lock_timeout','1000',true)",
     [actorId, tenantId ?? ''],
@@ -75,7 +79,7 @@ async function context(sql: Sql, actorId: string, tenantId?: string) {
     FROM pg_roles r JOIN pg_class c ON c.oid='qm.assets'::regclass WHERE r.rolname=current_user`);
   if (!role?.safe) throw new Problem(503, 'database_role_unsafe');
 }
-async function audit(
+export async function audit(
   sql: Sql,
   tenant: string,
   actor: string,
@@ -88,7 +92,7 @@ async function audit(
     [tenant, randomUUID(), entity, actor, action],
   );
 }
-async function createAsset(
+export async function createAsset(
   sql: Sql,
   tenant: string,
   id: string,
@@ -96,8 +100,8 @@ async function createAsset(
 ) {
   return first(
     await sql.query(
-      `INSERT INTO qm.assets(tenant_id,id,name,asset_class,status,location,manufacturer,model,serial_number,notes)
-    VALUES ($1::uuid,$2::uuid,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING ${assetColumns}`,
+      `INSERT INTO qm.assets(tenant_id,id,name,asset_class,status,location,manufacturer,model,serial_number,notes,details)
+    VALUES ($1::uuid,$2::uuid,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb) RETURNING ${assetColumns}`,
       [
         tenant,
         id,
@@ -109,16 +113,20 @@ async function createAsset(
         input.model,
         input.serialNumber,
         input.notes,
+        JSON.stringify(input.details ?? {}),
       ],
     ),
   );
 }
-function page(rows: Record<string, unknown>[]) {
+export function page(rows: Record<string, unknown>[]) {
   const items = rows.slice(0, 50);
   return { items, nextCursor: rows.length > 50 ? items.at(-1)!.id : null };
 }
 export class Operations {
-  constructor(private database: Database) {}
+  constructor(
+    private database: Database,
+    private platform?: Platform,
+  ) {}
   async memberships(actorId: string) {
     return this.database.transaction(async (sql) => {
       await context(sql, actorId);
@@ -127,7 +135,7 @@ export class Operations {
       return memberships;
     });
   }
-  async handle(actorId: string, request: Request) {
+  async handle(actorId: string, request: Request, authenticatedAt = 0) {
     const parts = request.rawPath?.match(/^\/api\/v1\/tenants\/([^/]+)\/(.*)$/);
     if (!parts) throw new Problem(404, 'not_found');
     const tenant = identifier(parts[1]),
@@ -142,7 +150,13 @@ export class Operations {
     const status = params.get('status') ?? '';
     if (
       status &&
-      !['in_service', 'needs_attention', 'out_of_service'].includes(status)
+      ![
+        'in_service',
+        'needs_attention',
+        'out_of_service',
+        'retired',
+        'disposed',
+      ].includes(status)
     )
       throw new Problem(400, 'invalid_status');
     return this.database.transaction(async (sql) => {
@@ -151,12 +165,26 @@ export class Operations {
         (item) => item.tenantId === tenant,
       );
       if (!membership) throw new Problem(403, 'membership_required');
-      if (!membership.synthetic) throw new Problem(403, 'pilot_not_enabled');
       const requireCapability = (capability: Capability) => {
         if (!membership.capabilities.includes(capability))
           throw new Problem(403, 'capability_required');
       };
       requireCapability('assets:read');
+      const featureContext = {
+        sql,
+        actor: actorId,
+        tenant,
+        route,
+        method: method ?? '',
+        request,
+        params,
+        cursor,
+        requireCapability,
+        authenticatedAt,
+        platform: this.platform,
+      };
+      const feature = await features(featureContext);
+      if (feature !== undefined) return feature;
       const assetRoute = route.match(
         /^assets\/([^/]+)(?:\/(maintenance|readings))?$/,
       );
@@ -167,11 +195,18 @@ export class Operations {
       if (method === 'GET') {
         if (route === 'assets')
           return page(
-            await sql.query(
+            await boundedRows(
+              sql,
               `SELECT ${assetColumns} FROM qm.assets WHERE id > $1::uuid
           AND ($2='' OR position(lower($2) in lower(concat_ws(' ',name,location,manufacturer,model,serial_number,notes)))>0)
-          AND ($3='' OR status=$3) ORDER BY id LIMIT 51`,
-              [cursor, query, status],
+          AND ($3='' OR status=$3) AND ($4='' OR asset_class=$4) AND ($5='' OR details->>'locationId'=$5) ORDER BY id LIMIT 51`,
+              [
+                cursor,
+                query,
+                status,
+                params.get('assetClass') ?? '',
+                params.get('locationId') ?? '',
+              ],
             ),
           );
         if (assetId && !sub)
@@ -225,7 +260,6 @@ export class Operations {
         }
         throw new Problem(404, 'not_found');
       }
-      if (method === 'DELETE') throw new Problem(409, 'purge_policy_pending');
       if (method !== 'POST' && method !== 'PATCH')
         throw new Problem(405, 'method_not_allowed');
       const isAssetCreate = route === 'assets' && method === 'POST';
@@ -300,18 +334,28 @@ export class Operations {
         action: string,
         item: Record<string, unknown>;
       if (isAssetCreate) {
-        item = await createAsset(sql, tenant, id, parse(AssetInput, input));
+        const data = parse(AssetInput, input);
+        await validateAsset(featureContext, data.details, data.assetClass);
+        item = await createAsset(sql, tenant, id, data);
         kind = 'assets';
         action = 'asset.created';
       } else if (isAssetUpdate) {
         const data = parse(AssetInput, input);
+        if (['disposed', 'retired'].includes(data.status))
+          recent(featureContext);
+        await validateAsset(
+          featureContext,
+          data.details,
+          data.assetClass,
+          assetId!,
+        );
         id = assetId!;
         kind = 'assets';
         action = 'asset.updated';
         item = first(
           await sql.query(
             `UPDATE qm.assets SET name=$2,asset_class=$3,status=$4,location=$5,manufacturer=$6,model=$7,serial_number=$8,notes=$9,
-          version=version+1,updated_at=now() WHERE id=$1::uuid AND version=$10::int RETURNING ${assetColumns}`,
+          details=$11::jsonb,version=version+1,updated_at=now() WHERE id=$1::uuid AND version=$10::int RETURNING ${assetColumns}`,
             [
               id,
               data.name,
@@ -323,6 +367,7 @@ export class Operations {
               data.serialNumber,
               data.notes,
               version(request),
+              JSON.stringify(data.details ?? {}),
             ],
           ),
           409,
@@ -433,18 +478,19 @@ export class Operations {
           409,
           'version_conflict',
         );
-        item = await createAsset(
-          sql,
-          tenant,
-          id,
-          parse(AssetInput, draft.content),
-        );
+        const data = parse(AssetInput, draft.content);
+        await validateAsset(featureContext, data.details, data.assetClass);
+        item = await createAsset(sql, tenant, id, data);
         kind = 'assets';
         action = 'draft.committed';
         await sql.query('DELETE FROM qm.drafts WHERE id=$1::uuid', [draftId]);
         await audit(sql, tenant, actorId, id, 'asset.created');
       }
-      await audit(sql, tenant, actorId, id, action);
+      await changed(featureContext, id, action);
+      if (kind === 'assets' && this.platform)
+        await queueJob(featureContext, randomUUID(), 'asset_rules', {
+          assetId: id,
+        });
       await sql.query(
         'INSERT INTO qm.mutations(tenant_id,actor_id,id,fingerprint,entity_id,entity_type) VALUES($1::uuid,$2::uuid,$3::uuid,$4,$5::uuid,$6)',
         [tenant, actorId, key, fingerprint, id, kind],

@@ -19,6 +19,30 @@ export interface Sql {
 export interface Database {
   transaction<T>(action: (sql: Sql) => Promise<T>): Promise<T>;
 }
+// Bound individual Data API responses even for maximum-size record content.
+// Statements are internal SQL with deterministic ORDER BY and a final LIMIT.
+export async function boundedRows<T = Record<string, unknown>>(
+  sql: Sql,
+  statement: string,
+  values: SqlValue[] = [],
+): Promise<T[]> {
+  const match = statement.match(/\sLIMIT (\d+)$/i);
+  if (!match) throw new Error('Bounded query needs an explicit final LIMIT');
+  const limit = Number(match[1]),
+    base = statement.slice(0, match.index),
+    rows: T[] = [];
+  if (limit > 5001) throw new Error('Bounded query limit exceeded');
+  while (rows.length < limit) {
+    const size = Math.min(20, limit - rows.length);
+    const chunk = await sql.query<T>(
+      `${base} LIMIT ${size} OFFSET ${rows.length}`,
+      values,
+    );
+    rows.push(...chunk);
+    if (chunk.length < size) break;
+  }
+  return rows;
+}
 function fieldValue(field: Field): unknown {
   if (field.isNull) return null;
   if (field.stringValue !== undefined) return field.stringValue;
