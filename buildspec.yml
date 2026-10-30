@@ -7,6 +7,7 @@ phases:
   build:
     commands:
       - export PATH="$CODEBUILD_SRC_DIR/.local/toolchain/node_modules/.bin:$CODEBUILD_SRC_DIR/.local/bin:$PATH"
+      - node tools/check-node-version.mjs
       - git init --initial-branch=dev
       - pnpm install --frozen-lockfile
       - pnpm verify
