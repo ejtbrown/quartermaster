@@ -32,6 +32,7 @@ jobs:
         with:
           terraform_version: 1.14.3
           terraform_wrapper: false
+      - run: node tools/check-node-version.mjs
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
       - run: pnpm infra:check
