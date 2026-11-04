@@ -1,5 +1,6 @@
 import { cloneElement, useEffect, useId, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import brandMark from './brand/quartermaster-icon-512.png';
 
 const paths: Record<string, ReactNode> = {
   assets: (
@@ -99,9 +100,13 @@ export function Icon({ name, ...props }: { name: string; className?: string }) {
 export function Brand() {
   return (
     <a className="brand" href="/" aria-label="Quartermaster home">
-      <span className="brand-mark" aria-hidden="true">
-        Q
-      </span>
+      <img
+        className="brand-mark"
+        src={brandMark}
+        alt=""
+        width="40"
+        height="40"
+      />
       <span>
         Quartermaster<small>Clear by design</small>
       </span>
