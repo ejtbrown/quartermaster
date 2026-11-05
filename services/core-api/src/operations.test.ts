@@ -352,3 +352,56 @@ describe(
     });
   },
 );
+
+it('attention summary matches its filter and maintenance names stay tenant scoped', async () => {
+  const ids: string[] = [];
+  for (const status of [
+    'in_service',
+    'needs_attention',
+    'out_of_service',
+    'retired',
+    'disposed',
+  ]) {
+    const result = await call('assets', 'POST', {
+      ...asset,
+      name: 'QM4 ' + status,
+      status,
+    });
+    ids.push(String(result.item.id));
+  }
+  const summary = (await ops.handle(actorA, request('summary'))) as {
+    needsAttention: number;
+  };
+  const filtered = request('assets');
+  filtered.rawQueryString = 'status=needs_attention';
+  const matches = (await ops.handle(actorA, filtered)) as {
+    items: { id: string }[];
+  };
+  expect(summary.needsAttention).toBe(matches.items.length);
+  expect(matches.items.some((a) => a.id === ids[1])).toBe(true);
+  expect(
+    matches.items.some((a) => [ids[2], ids[3], ids[4]].includes(a.id)),
+  ).toBe(false);
+  // Same UUID in another tenant must never supply this task's display name.
+  await db.query(
+    'INSERT INTO qm.assets(tenant_id,id,name,asset_class,status,location) VALUES($1,$2,$3,$4,$5,$6)',
+    [
+      tenantB,
+      ids[0],
+      'Other tenant private asset',
+      'air_conditioner',
+      'in_service',
+      'Private',
+    ],
+  );
+  await call(`assets/${ids[0]}/maintenance`, 'POST', {
+    title: 'QM4 inspect',
+    dueDate: null,
+    status: 'open',
+    notes: '',
+  });
+  const tasks = await call('maintenance');
+  const task = tasks.items.find((t) => t.title === 'QM4 inspect');
+  expect(task?.assetName).toBe('QM4 in_service');
+  expect(JSON.stringify(tasks)).not.toContain('Other tenant private asset');
+});

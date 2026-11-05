@@ -167,3 +167,25 @@ test('recovery returns to password sign-in and does not claim an authenticated s
     page.getByRole('button', { name: 'Sign in', exact: true }),
   ).toBeVisible();
 });
+
+test('normal same-origin sign-in preserves an explicit estate destination', async ({
+  page,
+}) => {
+  await page.route('**/api/auth/flow', async (route) => {
+    await route.fulfill({
+      json:
+        route.request().method() === 'GET'
+          ? { step: 'credentials', csrfToken: 'c'.repeat(43) }
+          : { step: 'complete' },
+    });
+  });
+  await page.goto('/#assets?status=needs_attention');
+  await page.getByRole('link', { name: 'Sign in', exact: true }).click();
+  await expect(page).toHaveURL(/sign-in#assets\?status=needs_attention$/);
+  await page
+    .getByLabel('Email address', { exact: true })
+    .fill('person@example.test');
+  await page.getByLabel('Password', { exact: true }).fill('A-test-password1!');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page).toHaveURL(/\/#assets\?status=needs_attention$/);
+});

@@ -1433,3 +1433,79 @@ dd {
     background: white;
   }
 }
+
+/* The register remains a working surface while detail is open. */
+[hidden] {
+  display: none !important;
+}
+.register-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.register-workspace > .estate-panel {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+.register-workspace > .detail-panel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.register-workspace .asset-button {
+  overflow-wrap: anywhere;
+}
+.summary-grid article > a {
+  font:
+    600 2rem Manrope,
+    sans-serif;
+  display: inline-block;
+  min-height: 44px;
+}
+.location-list {
+  list-style: none;
+  padding: 0;
+}
+.location-list li {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 16px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--divider);
+  padding: 12px 0;
+}
+.location-list a {
+  padding: 8px 0;
+  overflow-wrap: anywhere;
+}
+.location-list span {
+  text-transform: capitalize;
+  color: var(--muted);
+}
+@media (min-width: 1400px) {
+  .register-workspace.has-detail {
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 1fr);
+  }
+  .register-workspace > .detail-panel {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .register-workspace .register-heading {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .register-workspace .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1399px) {
+  .register-workspace.has-detail > .estate-panel {
+    display: none;
+  }
+}
+@media (max-width: 1399px) {
+  .register-view.has-editor > .summary-grid,
+  .register-view.has-editor > header > button {
+    display: none;
+  }
+}

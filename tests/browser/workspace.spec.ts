@@ -269,6 +269,7 @@ test.describe('Foreground voice with generated test audio', () => {
         return output.stream;
       };
     });
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
     await page.getByRole('link', { name: 'Capture', exact: true }).click();
     await page
@@ -489,7 +490,7 @@ test('phone viewport saves and resumes drafts, schedules maintenance, records re
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/#assets');
   await page.getByRole('button', { name: 'Add asset', exact: true }).click();
   await page.getByLabel('Name', { exact: true }).fill('Draft appliance');
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
@@ -604,4 +605,328 @@ test('refreshing after a different identity signs in clears the previous private
   await expect(
     page.getByText('Private unsaved draft', { exact: true }),
   ).toHaveCount(0);
+});
+
+async function seedRegister(count = 55) {
+  for (let n = 1; n <= count; n++) {
+    await db.query(
+      'INSERT INTO qm.assets(tenant_id,id,name,asset_class,status,location,serial_number) VALUES($1,$2,$3,$4,$5,$6,$7)',
+      [
+        tenant,
+        `aaaaaaaa-aaaa-4aaa-8aaa-${String(n).padStart(12, '0')}`,
+        n === 55
+          ? 'Roof ventilation unit with a realistically long descriptive asset name'
+          : `Estate unit ${n}`,
+        'air_conditioner',
+        n === 55 ? 'needs_attention' : n === 54 ? 'retired' : 'in_service',
+        'Main building / Upper floor / Mechanical room',
+        `TEST-${n}`,
+      ],
+    );
+  }
+}
+
+test('desktop list/detail restores the second page, filters, focus and keyboard navigation', async ({
+  page,
+}) => {
+  await seedRegister();
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.goto('/');
+  await expect(
+    page.getByRole('link', { name: 'Capture', exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole('button', { name: 'Load more assets' }).click();
+  const name =
+    'Roof ventilation unit with a realistically long descriptive asset name';
+  const row = page.getByRole('button', { name, exact: true });
+  await row.scrollIntoViewIfNeeded();
+  const listY = await page.evaluate(() => window.scrollY);
+  await row.dblclick();
+  await expect(page).toHaveURL(/asset=aaaaaaaa-aaaa-4aaa-8aaa-000000000055/);
+  await expect(
+    page.getByRole('region', { name: 'Asset register', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Photos', exact: true }).click();
+  await expect(page).toHaveURL(/detail=Photos/);
+  await page.goBack();
+  await expect(page.getByLabel('Field notes', { exact: true })).toBeVisible();
+  await page
+    .getByLabel('Field notes', { exact: true })
+    .fill('Reviewed locally');
+  await page.getByRole('button', { name: 'Save asset', exact: true }).click();
+  await expect(
+    page.getByRole('region', { name: 'Asset workspace', exact: true }),
+  ).toHaveCount(0);
+  await expect(row).toBeVisible();
+  await expect(row).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(listY);
+  await expect(page.locator('.asset-button')).toHaveCount(55);
+  await page.getByRole('searchbox').fill('TEST-55');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(page.locator('.asset-button')).toHaveCount(1);
+  await row.click();
+  await page.goBack();
+  await expect(page.getByRole('searchbox')).toHaveValue('TEST-55');
+  await expect(row).toBeFocused();
+  await page
+    .getByRole('link', { name: 'View assets needing attention' })
+    .click();
+  await expect(page.locator('.asset-button')).toHaveCount(1);
+  await page.screenshot({
+    path: '.local/qm4-desktop-register.png',
+    fullPage: true,
+  });
+  await row.click();
+  await expect(
+    page.getByRole('heading', { name: 'Asset details', exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: '.local/qm4-desktop-detail.png',
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test('mobile default is explicit capture, with manual entry and stable activity on resize', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const writes: string[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'POST') writes.push(r.url());
+  });
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Assisted asset capture' }),
+  ).toBeVisible();
+  expect(writes).toEqual([]);
+  await expect(
+    page.getByRole('button', { name: 'Record a voice answer' }),
+  ).toHaveCount(0);
+  await page
+    .getByRole('navigation', { name: 'Quick navigation' })
+    .getByRole('link', { name: 'Assets', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Add asset', exact: true }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Unsent phone entry');
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue(
+    'Unsent phone entry',
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: '.local/qm4-mobile-manual.png',
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test('dirty Back cancellation retains the editor and clean navigation does not prompt', async ({
+  page,
+}) => {
+  await page.removeLocatorHandler(page.getByRole('dialog'));
+  await seedRegister(1);
+  await page.goto('/#assets');
+  await page
+    .getByRole('button', { name: 'Estate unit 1', exact: true })
+    .click();
+  await page.getByLabel('Field notes', { exact: true }).fill('Keep this input');
+  await page.getByRole('button', { name: 'Photos', exact: true }).click();
+  // Dirty overview fields remain protected when another asset detail tab is visible.
+  await page.getByRole('link', { name: 'Maintenance', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.goBack(); // Photos -> Overview, no discarded input.
+  await page.goBack(); // Overview -> register, requires confirmation.
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await expect(
+    page.getByRole('textbox', { name: 'Field notes', exact: true }),
+  ).toHaveValue('Keep this input');
+  await expect(page).toHaveURL(/asset=/);
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Continue', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Estate unit 1', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Close editor' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('independent summary and draft failures leave the register usable; failed asset loading is not empty', async ({
+  page,
+}) => {
+  await seedRegister(1);
+  for (const tail of ['summary', 'drafts'])
+    await page.route(`**/api/v1/tenants/*/${tail}`, (r) =>
+      r.fulfill({ status: 403, json: { code: 'capability_required' } }),
+    );
+  await page.goto('/#assets');
+  await expect(
+    page.getByRole('button', { name: 'Estate unit 1', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText(/Estate summary unavailable:/)).toBeVisible();
+  await expect(page.getByText(/Drafts unavailable:/)).toBeVisible();
+  await page.route('**/api/v1/tenants/*/assets?*', (r) =>
+    r.fulfill({ status: 403, json: { code: 'capability_required' } }),
+  );
+  await page.getByRole('searchbox').fill('Nothing');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Retry loading' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('No matching assets', { exact: true }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: '.local/qm4-register-error.png',
+    fullPage: true,
+  });
+  await page.unroute('**/api/v1/tenants/*/assets?*');
+  await page.getByRole('button', { name: 'Retry loading' }).click();
+  await expect(
+    page.getByText('No matching assets', { exact: true }),
+  ).toBeVisible();
+});
+
+test('read-only mobile uses Assets and cross-workspace history cannot restore private context', async ({
+  page,
+}) => {
+  await seedRegister(1);
+  const other = '22222222-2222-4222-8222-222222222222';
+  await db.query('INSERT INTO qm.tenants(id,name) VALUES($1,$2)', [
+    other,
+    'Second estate',
+  ]);
+  await db.query(
+    'INSERT INTO qm.memberships(tenant_id,actor_id,capabilities) VALUES($1,$2,$3)',
+    [other, actor, ['assets:read']],
+  );
+  await db.query('UPDATE qm.memberships SET capabilities=$1', [
+    ['assets:read'],
+  ]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Your asset estate' }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Estate unit 1', exact: true })
+    .click();
+  await page.getByLabel('Organization', { exact: true }).selectOption(other);
+  await expect(page.getByLabel('Organization', { exact: true })).toHaveValue(
+    other,
+  );
+  await expect(
+    page.getByRole('button', { name: 'Estate unit 1', exact: true }),
+  ).toHaveCount(0);
+  await page.goBack();
+  await expect(
+    page.getByRole('button', { name: 'Estate unit 1', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('region', { name: 'Asset workspace', exact: true }),
+  ).toHaveCount(0);
+});
+
+test('complete location hierarchy links exact-location assets and maintenance links named asset details', async ({
+  page,
+}) => {
+  await seedRegister(1);
+  const assetId = 'aaaaaaaa-aaaa-4aaa-8aaa-000000000001';
+  const root = 'bbbbbbbb-bbbb-4bbb-8bbb-000000000001',
+    leaf = 'bbbbbbbb-bbbb-4bbb-8bbb-000000000052';
+  for (let n = 1; n <= 52; n++) {
+    const id = `bbbbbbbb-bbbb-4bbb-8bbb-${String(n).padStart(12, '0')}`;
+    await db.query(
+      "INSERT INTO qm.records(tenant_id,id,kind,content) VALUES($1,$2,'locations',$3::jsonb)",
+      [
+        tenant,
+        id,
+        JSON.stringify({
+          name: n === 1 ? 'Main site' : n === 52 ? 'Roof plant' : `Area ${n}`,
+          kind: n === 1 ? 'site' : 'area',
+          parentId: n === 1 ? null : root,
+          address: '',
+          notes: '',
+        }),
+      ],
+    );
+  }
+  await db.query('UPDATE qm.assets SET details=$1::jsonb', [
+    JSON.stringify({ locationId: leaf }),
+  ]);
+  await db.query(
+    "INSERT INTO qm.maintenance(tenant_id,id,asset_id,title,status,notes) VALUES($1,$2,$3,$4,$5,'')",
+    [
+      tenant,
+      'cccccccc-cccc-4ccc-8ccc-000000000001',
+      assetId,
+      'Inspect ventilation',
+      'open',
+    ],
+  );
+  await page.goto('/#locations');
+  await page
+    .getByRole('link', { name: 'Main site / Roof plant', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Estate unit 1', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      'Exact location only; descendant locations are not included.',
+    ),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Maintenance', exact: true }).click();
+  await page.getByRole('link', { name: 'Estate unit 1', exact: true }).click();
+  await expect(page).toHaveURL(/detail=Maintenance/);
+  await expect(
+    page.getByText('Inspect ventilation', { exact: true }),
+  ).toBeVisible();
+});
+
+test('expired sessions preserve edits through same-identity refresh and retry', async ({
+  page,
+}) => {
+  await seedRegister(1);
+  await page.goto('/#assets');
+  await page
+    .getByRole('button', { name: 'Estate unit 1', exact: true })
+    .click();
+  await page
+    .getByLabel('Field notes', { exact: true })
+    .fill('Keep through reauthentication');
+  const validSession = session;
+  session = undefined;
+  await page.getByRole('button', { name: 'Save asset', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('session expired');
+  await expect(
+    page.getByRole('textbox', { name: 'Field notes', exact: true }),
+  ).toHaveValue('Keep through reauthentication');
+  session = validSession;
+  await page.getByText('Account & session', { exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Refresh session', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Save asset', exact: true }).click();
+  await expect(
+    page.getByRole('region', { name: 'Asset workspace', exact: true }),
+  ).toHaveCount(0);
+  expect((await db.query('SELECT notes FROM qm.assets')).rows).toEqual([
+    { notes: 'Keep through reauthentication' },
+  ]);
 });

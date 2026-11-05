@@ -1,5 +1,7 @@
 import { confirmAction } from './ConfirmDialog';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { destination, slug, useNavigation } from './navigation';
+import { LocationsBrowser } from './LocationsBrowser';
 import { createPortal } from 'react-dom';
 import type { ReactNode } from 'react';
 import { Capability } from '@quartermaster/contracts';
@@ -47,14 +49,23 @@ export function EstateTools({
   children: ReactNode;
   navigationTarget: HTMLElement | null;
 }) {
-  const [tab, setTab] = useState('Assets');
-  const activeTab = useRef(tab);
-  activeTab.current = tab;
+  const { route, mobile, go } = useNavigation();
+  const tab = route.section;
+  const visitedAssets = useRef(tab === 'Assets');
+  if (tab === 'Assets') visitedAssets.current = true;
+  const lastAssets = useRef('#assets');
+  if (tab === 'Assets')
+    lastAssets.current = destination(
+      'Assets',
+      Object.fromEntries(route.params),
+    );
   const [menuOpen, setMenuOpen] = useState(false);
   const base = `/api/v1/tenants/${membership.tenantId}/`;
   const tabs = [
     'Assets',
-    ...(membership.capabilities.includes('assets:write') ? ['Capture'] : []),
+    ...(mobile && membership.capabilities.includes('assets:write')
+      ? ['Capture']
+      : []),
     'Maintenance',
     'Locations',
     'Asset types',
@@ -76,27 +87,6 @@ export function EstateTools({
     Accounting: ['books', 'transactions', 'valuations'],
     Rules: ['rules', 'views'],
   };
-  const slug = (name: string) => name.toLowerCase().replaceAll(' ', '-');
-  useEffect(() => {
-    const change = async (guard = false) => {
-      const name =
-        tabs.find((t) => '#' + slug(t) === window.location.hash) ?? 'Assets';
-      if (
-        guard &&
-        name !== activeTab.current &&
-        document.querySelector('[data-dirty="true"],[data-unsaved-editor]') &&
-        !(await confirmAction('Change section? Unsaved input will be lost.'))
-      ) {
-        window.history.pushState(null, '', '#' + slug(activeTab.current));
-        return;
-      }
-      setTab(name);
-    };
-    void change();
-    const back = () => void change(true);
-    window.addEventListener('popstate', back);
-    return () => window.removeEventListener('popstate', back);
-  }, [membership.tenantId]);
   const icons: Record<string, string> = {
     Assets: 'assets',
     Capture: 'mic',
@@ -113,20 +103,8 @@ export function EstateTools({
     Settings: 'settings',
   };
   const navigate = async (name: string) => {
-    if (
-      tab !== name &&
-      document.querySelector('[data-dirty="true"],[data-unsaved-editor]') &&
-      !(await confirmAction(
-        'Change section? Unsaved input in this form will be lost.',
-      ))
-    )
-      return;
-    setTab(name);
-    setMenuOpen(false);
-    window.history.pushState(null, '', '#' + slug(name));
-    requestAnimationFrame(() =>
-      document.querySelector<HTMLElement>('#main')?.focus(),
-    );
+    if (await go(name === 'Assets' ? lastAssets.current : destination(name)))
+      setMenuOpen(false);
   };
   const link = (name: string) => (
     <a
@@ -201,9 +179,8 @@ export function EstateTools({
           </span>
         </div>
       )}
-      {tab === 'Assets' ? (
-        children
-      ) : tab === 'Capture' ? (
+      {visitedAssets.current && <div hidden={tab !== 'Assets'}>{children}</div>}
+      {tab === 'Assets' ? null : tab === 'Capture' ? (
         <CapturePanel base={base} csrf={csrf} membership={membership} />
       ) : tab === 'Maintenance' ? (
         <>
@@ -219,6 +196,16 @@ export function EstateTools({
             csrf={csrf}
             membership={membership}
             kind="work_logs"
+          />
+        </>
+      ) : tab === 'Locations' ? (
+        <>
+          <LocationsBrowser base={base} />
+          <RecordsPanel
+            base={base}
+            csrf={csrf}
+            membership={membership}
+            kind="locations"
           />
         </>
       ) : tab === 'Reports' ? (
@@ -252,7 +239,10 @@ function WorkPanel({
   csrf: string;
   membership: Membership;
 }) {
-  const data = usePage<Maintenance>(base + 'maintenance');
+  const { go } = useNavigation();
+  const data = usePage<Maintenance & { assetName: string }>(
+    base + 'maintenance',
+  );
   const mutation = useSave(base, csrf, data.reload);
   return (
     <section className="panel">
@@ -262,7 +252,9 @@ function WorkPanel({
         not automatically complete a task.
       </p>
       <PageControls data={data} />
-      {!data.items.length && !data.busy && <p>No maintenance tasks.</p>}
+      {!data.items.length && !data.busy && !data.error && (
+        <p>No maintenance tasks.</p>
+      )}
       {data.items.map((task) => (
         <article key={task.id}>
           <h3>{task.title}</h3>
@@ -270,9 +262,23 @@ function WorkPanel({
             {task.status} · due {task.dueDate ?? 'not set'}
           </p>
           <p>{task.notes}</p>
-          <small>
-            Task ID: {task.id} · Asset: {task.assetId}
-          </small>
+          <a
+            href={destination('Assets', {
+              asset: task.assetId,
+              detail: 'Maintenance',
+            })}
+            onClick={(event) => {
+              event.preventDefault();
+              void go(
+                destination('Assets', {
+                  asset: task.assetId,
+                  detail: 'Maintenance',
+                }),
+              );
+            }}
+          >
+            {task.assetName}
+          </a>
           {membership.capabilities.includes('maintenance:write') && (
             <div className="actions">
               {(['open', 'in_progress', 'completed'] as const)
