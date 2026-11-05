@@ -17,6 +17,7 @@ Use the sidebar's Everyday group for Assets, Maintenance and Locations. Planning
 and Manage retain the existing insurance, incidents, accounting, reports, asset
 types, rules, activity, team and settings tools, subject to existing permissions.
 Mobile Quick navigation includes Assets so manual entry is always available.
+Keyboard-focused form controls scroll clear of the fixed navigation when needed.
 
 Search and filters apply to the authorized collection on the server. Load more
 extends the register; there is no client-only column sorting. Open an asset to see
@@ -76,12 +77,21 @@ The repository check is run separately because the aggregate stops before it.
 Playwright initially could not bind `127.0.0.1:4173` inside the sandbox
 (`listen EPERM`). No approval reviewer denied the operation. The standard narrow
 approval route subsequently permitted the unchanged loopback test configuration.
-All **23 Chromium browser tests passed** with one worker, including 55-asset
+All **28 Chromium browser tests passed** with one worker, including 55-asset
 pagination, 52-location hierarchy traversal, exact scroll/focus restoration,
 repeated selection, guarded Back cancellation, mobile default and resize behavior,
 read-only/organization isolation, expired-session retry, stale versions and lost
-write acknowledgments. Desktop detail/register, mobile manual-entry and error-state
-screenshots were inspected. Synthetic browser evidence does not replace real-device
+write acknowledgments. Follow-up scenarios execute Forward through detail/tab
+history, cancel and confirm dirty write-enabled organization switching, and perform
+the principal find/edit/cancel/return journey using keyboard input only. A complete
+synthetic compatibility-callback journey exercises the real callback, browser
+session cookies and rendered workspace; provider exchange and pending-login setup
+are synthetic, and the final fixture asserts loopback-only browser requests. A
+390-by-844 viewport check verifies focused Location, status, notes and final action
+controls remain fully above fixed navigation. This exposed and corrected a partly
+occluded notes field. Desktop detail/register, mobile manual-entry and error-state
+screenshots were inspected, along with callback, keyboard-return and mobile-focused
+action screenshots. Synthetic browser evidence does not replace real-device
 or live signed-in acceptance, nor does it establish a measured five-second user
 study result.
 

@@ -228,6 +228,23 @@ export function Workspace({ session: initial }: { session: SessionInfo }) {
   return (
     <div
       className="app-layout operational"
+      onFocusCapture={(event) => {
+        const target = event.target as HTMLElement;
+        if (!target.closest('main')) return;
+        // Native keyboard focus can leave a partly visible textarea beneath
+        // the fixed mobile navigation. Respect the browser's first scroll,
+        // then reveal the entire focused control if it is still occluded.
+        requestAnimationFrame(() => {
+          if (document.activeElement !== target) return;
+          const navigation =
+            document.querySelector<HTMLElement>('.mobile-bottom-nav');
+          if (!navigation || !navigation.getClientRects().length) return;
+          const control = target.getBoundingClientRect();
+          const boundary = navigation.getBoundingClientRect();
+          if (control.bottom > boundary.top || control.top < 0)
+            target.scrollIntoView({ block: 'center', behavior: 'auto' });
+        });
+      }}
       onChangeCapture={(event) => {
         const target = event.target as HTMLElement;
         target

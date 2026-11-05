@@ -3,7 +3,11 @@ import { createHash } from 'node:crypto';
 import { test, expect } from '@playwright/test';
 import { PGlite } from '@electric-sql/pglite';
 import { Auth, hash } from '../../services/core-api/src/auth';
-import type { AuthStore, Session } from '../../services/core-api/src/auth';
+import type {
+  AuthStore,
+  Session,
+  Login,
+} from '../../services/core-api/src/auth';
 import { application } from '../../services/core-api/src/handler';
 import { Operations } from '../../services/core-api/src/operations';
 import { Capability } from '../../packages/contracts/src/index';
@@ -24,7 +28,15 @@ let db: PGlite,
   session: Session | undefined,
   dropCreateResponse = false;
 let mutationKeys: string[] = [];
+let compatibilityMode = false,
+  compatibilityAuth: Auth;
+let compatibilityLogin: Login | undefined;
+let compatibilityNonce = '';
+const compatibilitySessions = new Map<string, Session>();
 test.beforeEach(async ({ page }) => {
+  compatibilityMode = false;
+  compatibilityLogin = undefined;
+  compatibilitySessions.clear();
   db = new PGlite();
   mutationKeys = [];
   dropCreateResponse = false;
@@ -50,17 +62,34 @@ test.beforeEach(async ({ page }) => {
     authenticatedAt: Math.floor(Date.now() / 1000),
   };
   const store: AuthStore = {
-    async putLogin() {
-      throw new Error('Not a Cognito test');
+    async putLogin(login) {
+      if (!compatibilityMode) throw new Error('Not a Cognito test');
+      compatibilityLogin = login;
     },
-    async takeLogin() {
-      return undefined;
+    async takeLogin(state, binding, now) {
+      const login = compatibilityLogin;
+      if (
+        !login ||
+        login.state !== state ||
+        login.binding !== binding ||
+        login.expiresAt <= now
+      )
+        return undefined;
+      compatibilityLogin = undefined;
+      return login;
     },
-    async putSession() {},
+    async putSession(key, value) {
+      compatibilitySessions.set(key, value);
+    },
     async getSession(key) {
-      return key === hash(id) ? session : undefined;
+      return compatibilityMode
+        ? compatibilitySessions.get(key)
+        : key === hash(id)
+          ? session
+          : undefined;
     },
-    async deleteSession() {
+    async deleteSession(key) {
+      compatibilitySessions.delete(key);
       session = undefined;
     },
   };
@@ -72,10 +101,19 @@ test.beforeEach(async ({ page }) => {
       userPoolId: 'us-east-2_test',
     },
     store,
-    async () => {
-      throw new Error('Not a Cognito test');
+    async (code, verifier) => {
+      if (!compatibilityMode) throw new Error('Not a Cognito test');
+      expect(code).toBe('synthetic-authorization-code');
+      expect(verifier.length).toBeGreaterThanOrEqual(43);
+      return {
+        actorId: actor,
+        nonce: compatibilityNonce,
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        authenticatedAt: Math.floor(Date.now() / 1000),
+      };
     },
   );
+  compatibilityAuth = auth;
   const pending: QueueMessage[] = [];
   const platform: Platform = {
     enqueue: async (m) => {
@@ -169,7 +207,12 @@ test.beforeEach(async ({ page }) => {
       rawPath: url.pathname,
       rawQueryString: url.search.slice(1),
       headers,
-      cookies: ['__Host-qm_session=' + id],
+      cookies: compatibilityMode
+        ? (headers.cookie ?? '')
+            .split(';')
+            .map((value) => value.trim())
+            .filter(Boolean)
+        : ['__Host-qm_session=' + id],
       requestContext: { http: { method: request.method() } },
       ...(request.postData() ? { body: request.postData()! } : {}),
     });
@@ -180,7 +223,12 @@ test.beforeEach(async ({ page }) => {
     }
     await route.fulfill({
       status: result.statusCode,
-      headers: result.headers,
+      headers: {
+        ...result.headers,
+        ...(compatibilityMode && result.cookies.length
+          ? { 'set-cookie': result.cookies.join('\n') }
+          : {}),
+      },
       body: result.body,
     });
     while (pending.length) await worker.run(pending.shift()!);
@@ -929,4 +977,270 @@ test('expired sessions preserve edits through same-identity refresh and retry', 
   expect((await db.query('SELECT notes FROM qm.assets')).rows).toEqual([
     { notes: 'Keep through reauthentication' },
   ]);
+});
+
+test('Forward restores asset detail, tab and filters after Back without losing edits', async ({
+  page,
+}) => {
+  await page.removeLocatorHandler(page.getByRole('dialog'));
+  await seedRegister(1);
+  await page.goto('/#assets?q=TEST-1');
+  const row = page.getByRole('button', { name: 'Estate unit 1', exact: true });
+  await row.click();
+  await page.getByRole('button', { name: 'Photos', exact: true }).click();
+  await page.goBack();
+  await expect(
+    page.getByRole('textbox', { name: 'Field notes', exact: true }),
+  ).toBeVisible();
+  await page.goForward();
+  await expect(page).toHaveURL(/detail=Photos/);
+  await expect(
+    page.getByRole('button', { name: 'Photos', exact: true }),
+  ).toHaveAttribute('aria-current', 'page');
+  await page.goBack();
+  await page
+    .getByRole('textbox', { name: 'Field notes', exact: true })
+    .fill('Retain across detail history');
+  await page.goForward();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.goBack();
+  await expect(
+    page.getByRole('textbox', { name: 'Field notes', exact: true }),
+  ).toHaveValue('Retain across detail history');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Continue', exact: true })
+    .click();
+  await expect(row).toBeVisible();
+  await expect(page.getByRole('searchbox')).toHaveValue('TEST-1');
+  await row.click();
+  await page.goBack();
+  await expect(row).toBeVisible();
+  await page.goForward();
+  await expect(
+    page.getByRole('textbox', { name: 'Name', exact: true }),
+  ).toHaveValue('Estate unit 1');
+  await expect(
+    page.getByRole('textbox', { name: 'Field notes', exact: true }),
+  ).toHaveValue('');
+  await expect(page).toHaveURL(/q=TEST-1/);
+});
+
+test('dirty write-enabled organization switching cancels safely and discards only after confirmation', async ({
+  page,
+}) => {
+  await page.removeLocatorHandler(page.getByRole('dialog'));
+  await seedRegister(1);
+  const other = '22222222-2222-4222-8222-222222222222';
+  await db.query('INSERT INTO qm.tenants(id,name) VALUES($1,$2)', [
+    other,
+    'Second writable estate',
+  ]);
+  await db.query(
+    'INSERT INTO qm.memberships(tenant_id,actor_id,capabilities) VALUES($1,$2,$3)',
+    [other, actor, Capability.options],
+  );
+  await page.goto('/#assets');
+  await page
+    .getByRole('button', { name: 'Estate unit 1', exact: true })
+    .click();
+  await page
+    .getByRole('textbox', { name: 'Field notes', exact: true })
+    .fill('Private unsaved input');
+  const organization = page.getByLabel('Organization', { exact: true });
+  await organization.selectOption(other);
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await expect(organization).toHaveValue(tenant);
+  await expect(
+    page.getByRole('textbox', { name: 'Field notes', exact: true }),
+  ).toHaveValue('Private unsaved input');
+  await organization.selectOption(other);
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Continue', exact: true })
+    .click();
+  await expect(organization).toHaveValue(other);
+  await expect(
+    page.getByRole('button', { name: 'Add asset', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Asset workspace', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText('Private unsaved input', { exact: true }),
+  ).toHaveCount(0);
+  await organization.selectOption(tenant);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Estate unit 1', exact: true })
+    .click();
+  await expect(
+    page.getByRole('textbox', { name: 'Field notes', exact: true }),
+  ).toHaveValue('');
+  expect((await db.query('SELECT notes FROM qm.assets')).rows).toEqual([
+    { notes: '' },
+  ]);
+});
+
+test('synthetic compatibility callback issues browser cookies and renders the desktop workspace', async ({
+  page,
+}) => {
+  compatibilityMode = true;
+  session = undefined;
+  const traffic: string[] = [];
+  page.on('request', (request) => traffic.push(request.url()));
+  // Arrange only the pending synthetic login and its browser binding. No
+  // provider navigation or credential exchange is performed. From callback
+  // onward, the real router, cookie issuance, session lookup, RLS and UI run.
+  const login = await compatibilityAuth.login();
+  const authorization = new URL(login.headers.location!);
+  compatibilityNonce = compatibilityLogin!.nonce;
+  expect(authorization.searchParams.get('code_challenge_method')).toBe('S256');
+  await page.route('**/__test/prepare-compatibility', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: {
+        'content-type': 'text/html',
+        'cache-control': 'no-store',
+        'set-cookie': login.cookies[0]!,
+      },
+      body: '<!doctype html><title>Synthetic login prepared</title>',
+    }),
+  );
+  await page.goto('/__test/prepare-compatibility');
+  const callback =
+    '/api/auth/callback?' +
+    new URLSearchParams({
+      state: authorization.searchParams.get('state')!,
+      code: 'synthetic-authorization-code',
+    });
+  await page.goto(callback);
+  await expect(
+    page.getByRole('heading', { name: 'Your asset estate' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Add asset', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: 'Capture', exact: true }),
+  ).toHaveCount(0);
+  await expect(page).toHaveURL(/\/#assets/);
+  expect(compatibilityLogin).toBeUndefined();
+  expect(compatibilitySessions.size).toBe(1);
+  const cookies = await page.context().cookies();
+  expect(
+    cookies.find((cookie) => cookie.name === '__Host-qm_session'),
+  ).toMatchObject({ httpOnly: true, secure: true, sameSite: 'Lax' });
+  expect(cookies.some((cookie) => cookie.name === '__Host-qm_login')).toBe(
+    false,
+  );
+  expect(await page.evaluate(() => document.cookie)).not.toContain(
+    '__Host-qm_session',
+  );
+  expect(traffic.some((url) => url.includes('/api/auth/callback?'))).toBe(true);
+  expect(
+    traffic.every((url) => new URL(url).origin === 'http://127.0.0.1:4173'),
+  ).toBe(true);
+  await page.screenshot({
+    path: '.local/qm4-compatibility-callback.png',
+    fullPage: true,
+  });
+});
+
+test('keyboard-only find edit cancel and return preserves focus and leaves the asset unchanged', async ({
+  page,
+}) => {
+  await page.removeLocatorHandler(page.getByRole('dialog'));
+  await seedRegister(1);
+  await page.goto('/#assets');
+  await expect(
+    page.getByRole('heading', { name: 'Your asset estate' }),
+  ).toBeVisible();
+  // Navigation and editing below use only keyboard events: no click, focus,
+  // fill, or DOM mutation shortcuts. Locators are used solely for assertions.
+  const tabTo = async (target: ReturnType<typeof page.getByRole>) => {
+    for (let n = 0; n < 100; n++) {
+      if (await target.evaluate((el) => el === document.activeElement)) return;
+      await page.keyboard.press('Tab');
+    }
+    throw new Error('Target was not reachable by Tab');
+  };
+  await tabTo(page.getByRole('searchbox'));
+  await page.keyboard.type('TEST-1');
+  await page.keyboard.press('Enter');
+  const row = page.getByRole('button', { name: 'Estate unit 1', exact: true });
+  await expect(row).toBeVisible();
+  await tabTo(row);
+  await page.keyboard.press('Enter');
+  const notes = page.getByRole('textbox', { name: 'Field notes', exact: true });
+  await expect(notes).toBeVisible();
+  await tabTo(notes);
+  await page.keyboard.type('Keyboard-only unsaved edit');
+  await tabTo(page.getByRole('button', { name: 'Cancel', exact: true }));
+  await page.keyboard.press('Enter');
+  await expect(
+    page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Cancel', exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(notes).toHaveValue('Keyboard-only unsaved edit');
+  await expect(
+    page.getByRole('button', { name: 'Cancel', exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press('Enter');
+  await tabTo(
+    page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Continue', exact: true }),
+  );
+  await page.keyboard.press('Enter');
+  await expect(row).toBeFocused();
+  await expect(page.getByRole('searchbox')).toHaveValue('TEST-1');
+  expect((await db.query('SELECT notes FROM qm.assets')).rows).toEqual([
+    { notes: '' },
+  ]);
+  await page.screenshot({
+    path: '.local/qm4-keyboard-return.png',
+    fullPage: true,
+  });
+});
+
+test('narrow keyboard focus and final editor actions remain above the fixed navigation', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/#assets');
+  await page.getByRole('button', { name: 'Add asset', exact: true }).click();
+  const targets = [
+    page.getByRole('textbox', { name: 'Location', exact: true }),
+    page.getByRole('combobox', { name: 'Asset status', exact: true }),
+    page.getByRole('textbox', { name: 'Field notes', exact: true }),
+    page.getByRole('button', { name: 'Create asset', exact: true }),
+    page.getByRole('button', { name: 'Cancel', exact: true }),
+    page.getByRole('button', { name: 'Save draft', exact: true }),
+  ];
+  for (const target of targets) {
+    for (let n = 0; n < 100; n++) {
+      if (await target.evaluate((el) => el === document.activeElement)) break;
+      await page.keyboard.press('Tab');
+    }
+    await expect(target).toBeFocused();
+    await expect
+      .poll(async () => {
+        const field = await target.boundingBox();
+        const nav = await page
+          .getByRole('navigation', { name: 'Quick navigation' })
+          .boundingBox();
+        return Boolean(
+          field && nav && field.y >= 0 && field.y + field.height <= nav.y,
+        );
+      })
+      .toBe(true);
+  }
+  await page.screenshot({ path: '.local/qm4-mobile-focused-actions.png' });
 });
