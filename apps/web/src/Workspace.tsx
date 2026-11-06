@@ -577,8 +577,11 @@ function Register({
         <div>
           <p className="eyebrow">{membership.name}</p>
           <h1>Your asset estate</h1>
-          <p className="subtitle">
-            Equipment, observations, and the work ahead.
+          <p
+            className={`subtitle ${notice ? 'register-confirmation' : ''}`}
+            role={notice ? 'status' : undefined}
+          >
+            {notice || 'Equipment, observations, and the work ahead.'}
           </p>
         </div>
         {canWrite && (
@@ -605,11 +608,6 @@ function Register({
           </button>
         )}
       </header>
-      {notice && (
-        <p role="status" className="success-message">
-          {notice}
-        </p>
-      )}
       {!canWrite && (
         <p className="notice">
           You have read-only access to assets in this workspace.
@@ -907,7 +905,7 @@ function Register({
               {error} <button onClick={changed}>Retry loading</button>
             </p>
           )}
-          {busy && (
+          {busy && !assets.length && (
             <p role="status" className="empty">
               Loading… The database may take up to a minute to wake.
             </p>
@@ -975,6 +973,11 @@ function Register({
                   ? 'Add your first asset above to start your estate register.'
                   : 'Assets will appear here when your team adds them.'}
             </EmptyState>
+          )}
+          {busy && assets.length > 0 && (
+            <p role="status" className="empty">
+              Refreshing assets… Your current results remain available.
+            </p>
           )}
           {next && (
             <button disabled={busy} onClick={() => void more('assets', next)}>

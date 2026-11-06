@@ -1509,3 +1509,7 @@ dd {
     display: none;
   }
 }
+
+.register-confirmation {
+  color: var(--success);
+}

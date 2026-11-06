@@ -107,3 +107,20 @@ The reported live desktop-to-verbal entry still has **not** been reproduced or
 explained in a signed-in session. Signed-in live acceptance needs separate
 authorization. Publication, PR, merge, deployment, infrastructure, credentials/access
 and customer-data testing remain outside this local implementation approval.
+
+## Linux restoration follow-up
+
+The original Linux browser run exposed an 88-pixel scroll shift after saving a
+second-page asset. Diagnostics showed restoration first reaching the correct
+position, followed by browser scroll anchoring when the temporary loading message
+above the rows disappeared. A new save banner also moved the rows downward.
+
+Save confirmation now uses the existing subtitle line, and refresh feedback for
+an already loaded register appears after the rows. Initial loading still has its
+existing prominent message. The regression deliberately holds the refresh open
+and checks exact scroll position, exact selected-row position, visibility and
+focus before and after refresh; it retains the second-page and filter assertions.
+
+This follow-up is implemented and verified in the isolated Linux workspace. The
+Mac checkout and previously approved transfer bundles remain at the earlier
+candidate until a separately coordinated synchronization.

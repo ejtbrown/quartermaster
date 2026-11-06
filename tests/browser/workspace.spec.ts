@@ -689,6 +689,7 @@ test('desktop list/detail restores the second page, filters, focus and keyboard 
   const row = page.getByRole('button', { name, exact: true });
   await row.scrollIntoViewIfNeeded();
   const listY = await page.evaluate(() => window.scrollY);
+  const rowY = (await row.boundingBox())!.y;
   await row.dblclick();
   await expect(page).toHaveURL(/asset=aaaaaaaa-aaaa-4aaa-8aaa-000000000055/);
   await expect(
@@ -701,13 +702,33 @@ test('desktop list/detail restores the second page, filters, focus and keyboard 
   await page
     .getByLabel('Field notes', { exact: true })
     .fill('Reviewed locally');
+  let releaseRefresh!: () => void;
+  const refreshGate = new Promise<void>((resolve) => {
+    releaseRefresh = resolve;
+  });
+  await page.route('**/assets?*', async (route) => {
+    if (route.request().method() === 'GET') await refreshGate;
+    await route.fallback();
+  });
   await page.getByRole('button', { name: 'Save asset', exact: true }).click();
+  await expect(
+    page.getByText('Refreshing assets… Your current results remain available.'),
+  ).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Asset workspace', exact: true }),
   ).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(listY);
+  await expect.poll(async () => (await row.boundingBox())!.y).toBe(rowY);
+  await expect(row).toBeInViewport();
+  releaseRefresh();
+  await expect(
+    page.getByRole('button', { name: 'Search', exact: true }),
+  ).toBeEnabled();
   await expect(row).toBeVisible();
   await expect(row).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(listY);
+  await expect.poll(async () => (await row.boundingBox())!.y).toBe(rowY);
+  await expect(row).toBeInViewport();
   await expect(page.locator('.asset-button')).toHaveCount(55);
   await page.getByRole('searchbox').fill('TEST-55');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
