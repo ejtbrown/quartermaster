@@ -157,7 +157,7 @@ export function SignIn() {
       if (!next.code) form.reset();
       if (next.step === 'complete') {
         setSecret('');
-        if (!reauth) window.location.assign('/');
+        if (!reauth) window.location.assign('/' + window.location.hash);
       }
     } catch (e) {
       setError(
@@ -222,7 +222,7 @@ export function SignIn() {
                   ? 'Return to your original tab and choose “Refresh session.” Your unsaved work can stay there.'
                   : 'Opening your workspace…'}
               </p>
-              <a className="action primary" href="/">
+              <a className="action primary" href={'/' + window.location.hash}>
                 Open workspace
               </a>
             </>

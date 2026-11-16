@@ -1,5 +1,11 @@
 # Operational workspace
 
+## QM-4 local desktop/mobile workspace increment
+
+See [QM-4 workspace behavior and verification gates](QM-4-WORKSPACE.md). This is
+a local candidate based on the completed QM-3 tree, not a published rollout.
+
+
 ## Accepted visual system and same-origin identity — October 6
 
 The owner adopted `docs/design/Quartermaster-Visual-Style-Guide-v1.pdf`. Its two proposal-framing pages are removed; the remaining 20 pages are the accepted design standard. The application self-hosts the guide’s licensed fonts and applies its semantic colors, focus indicators, 44px targets, responsive navigation, labels/help, reviewed AI treatments and confirmation dialogs. The PDF specimens are illustrative, not seeded estate records.

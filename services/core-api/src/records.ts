@@ -373,7 +373,7 @@ export async function records(c: FeatureContext): Promise<unknown | undefined> {
   if (c.route === 'maintenance' && c.method === 'GET')
     return page(
       await c.sql.query(
-        `SELECT ${maintenanceColumns} FROM qm.maintenance WHERE id>$1::uuid AND ($2='' OR status=$2) ORDER BY id LIMIT 51`,
+        `SELECT ${maintenanceColumns}, (SELECT name FROM qm.assets WHERE id=qm.maintenance.asset_id) AS "assetName" FROM qm.maintenance WHERE id>$1::uuid AND ($2='' OR status=$2) ORDER BY id LIMIT 51`,
         [c.cursor, c.params.get('status') ?? ''],
       ),
     );

@@ -49,7 +49,10 @@ export function App() {
               Sign in to your organization’s private workspace. Access is
               invitation-only.
             </p>
-            <a className="primary action" href="/sign-in">
+            <a
+              className="primary action"
+              href={'/sign-in' + window.location.hash}
+            >
               Sign in <Icon name="arrow" />
             </a>
             <p>

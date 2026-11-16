@@ -234,7 +234,7 @@ export class Operations {
           return first(
             await sql.query(`SELECT
           (SELECT count(*)::int FROM qm.assets) AS assets,
-          (SELECT count(*)::int FROM qm.assets WHERE status <> 'in_service') AS "needsAttention",
+          (SELECT count(*)::int FROM qm.assets WHERE status = 'needs_attention') AS "needsAttention",
           (SELECT count(*)::int FROM qm.maintenance WHERE status <> 'completed') AS "openTasks",
           (SELECT count(*)::int FROM qm.maintenance WHERE status <> 'completed' AND due_date < (now() AT TIME ZONE 'UTC')::date) AS "overdueTasks"`),
           );

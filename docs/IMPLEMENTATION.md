@@ -1,5 +1,11 @@
 # Development implementation status
 
+## QM-4 local desktop/mobile workspace increment
+
+See [QM-4 workspace behavior and verification gates](QM-4-WORKSPACE.md). This is
+a local candidate based on the completed QM-3 tree, not a published rollout.
+
+
 ## Accepted design and same-origin sign-in rollout — October 6
 
 The visual guide is now accepted, with the two proposal-framing pages removed (20 pages remain). The responsive client implements the typography/palette, grouped navigation, asset-local sections, help disclosures, structured asset-type fields, human-readable AI proposals, monetary report formatting and keyboard-accessible confirmations. Cognito-backed sign-in, invitations, password recovery and mandatory authenticator verification use first-party screens at `qm.ejtbrown.com/sign-in`; existing credentials remain valid. No sample records are seeded.
